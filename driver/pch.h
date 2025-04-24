@@ -7,10 +7,19 @@
 
 #pragma once
 
+#include <ntifs.h>
 #include <ntddk.h>
 #include <ntstrsafe.h>
+#include <fltKernel.h>
 
 // Tambahan header untuk C++
 #ifdef __cplusplus
-// Tambahkan header C++ jika diperlukan di sini
+// PeaceMaker related headers
+#include "common.h"
+#include "DetectionLogic.h"
+#include "ImageFilter.h"
+#include "ObjectFilter.h"
+#include "AlertQueue.h"
+#include "StringFilters.h"
+#include "StackWalker.h"
 #endif

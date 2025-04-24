@@ -7,6 +7,29 @@
 
 #pragma once
 
+#include "common.h"
+#include "DetectionLogic.h"
+#include "ImageFilter.h"
+#include "ObjectFilter.h"
+
+// Define tags for memory allocation
+#define TDRIVER_TAG 'TDrv'
+#define DETECTION_LOGIC_TAG 'lDmP'
+#define IMAGE_FILTER_TAG 'fImP'
+#define OBJECT_FILTER_TAG 'fOmP'
+
+class TDriverClass {
+private:
+    static PDRIVER_OBJECT DriverObject;
+    static PDETECTION_LOGIC Detector;
+    static PIMAGE_FILTER ImageProcessFilter;
+    static POBJECT_FILTER ObjectMonitor;
+
+public:
+    static NTSTATUS Initialize(_In_ PDRIVER_OBJECT Driver, _In_ PUNICODE_STRING RegistryPath);
+    static VOID Cleanup();
+};
+
 // Untuk memastikan fungsi-fungsi dapat dipanggil dari kode C++
 #ifdef __cplusplus
 extern "C" {

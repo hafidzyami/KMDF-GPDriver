@@ -8,6 +8,89 @@
 #include "pch.h"
 #include "tdriver.h"
 
+// Initialize static members of TDriverClass
+PDRIVER_OBJECT TDriverClass::DriverObject = NULL;
+PDETECTION_LOGIC TDriverClass::Detector = NULL;
+PIMAGE_FILTER TDriverClass::ImageProcessFilter = NULL;
+POBJECT_FILTER TDriverClass::ObjectMonitor = NULL;
+
+/**
+ * Initialize PeaceMaker components
+ */
+NTSTATUS
+TDriverClass::Initialize(
+    _In_ PDRIVER_OBJECT Driver,
+    _In_ PUNICODE_STRING RegistryPath
+)
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    TDriverClass::DriverObject = Driver;
+    
+    // Initialize detection logic
+    TDriverClass::Detector = new (NonPagedPool, DETECTION_LOGIC_TAG) DetectionLogic();
+    if (TDriverClass::Detector == NULL) {
+        DbgPrint("[DRIVER] Failed to allocate space for detection logic\n");
+        return STATUS_NO_MEMORY;
+    }
+    
+    // Initialize image filter
+    TDriverClass::ImageProcessFilter = new (NonPagedPool, IMAGE_FILTER_TAG) ImageFilter(TDriverClass::Detector, &status);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[DRIVER] Failed to initialize image process filter with status 0x%X\n", status);
+        return status;
+    }
+    
+    if (TDriverClass::ImageProcessFilter == NULL) {
+        DbgPrint("[DRIVER] Failed to allocate space for image process filter\n");
+        return STATUS_NO_MEMORY;
+    }
+    
+    // Initialize object filter
+    TDriverClass::ObjectMonitor = new (NonPagedPool, OBJECT_FILTER_TAG) ObjectFilter(Driver, RegistryPath, TDriverClass::Detector, &status);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[DRIVER] Failed to initialize object filter with status 0x%X\n", status);
+        return status;
+    }
+    
+    if (TDriverClass::ObjectMonitor == NULL) {
+        DbgPrint("[DRIVER] Failed to allocate space for object filter\n");
+        return STATUS_NO_MEMORY;
+    }
+    
+    DbgPrint("[DRIVER] PeaceMaker components initialized successfully\n");
+    return STATUS_SUCCESS;
+}
+
+/**
+ * Cleanup PeaceMaker components
+ */
+VOID
+TDriverClass::Cleanup()
+{
+    // Clean up detection logic
+    if (TDriverClass::Detector != NULL) {
+        TDriverClass::Detector->~DetectionLogic();
+        ExFreePoolWithTag(TDriverClass::Detector, DETECTION_LOGIC_TAG);
+        TDriverClass::Detector = NULL;
+    }
+    
+    // Clean up image filter
+    if (TDriverClass::ImageProcessFilter != NULL) {
+        TDriverClass::ImageProcessFilter->~ImageFilter();
+        ExFreePoolWithTag(TDriverClass::ImageProcessFilter, IMAGE_FILTER_TAG);
+        TDriverClass::ImageProcessFilter = NULL;
+    }
+    
+    // Clean up object filter
+    if (TDriverClass::ObjectMonitor != NULL) {
+        TDriverClass::ObjectMonitor->~ObjectFilter();
+        ExFreePoolWithTag(TDriverClass::ObjectMonitor, OBJECT_FILTER_TAG);
+        TDriverClass::ObjectMonitor = NULL;
+    }
+    
+    DbgPrint("[DRIVER] PeaceMaker components cleaned up\n");
+}
+
 // Untuk memastikan kode C bisa digunakan di C++
 extern "C" {
 
@@ -17,10 +100,16 @@ DriverEntry(
     _In_ PUNICODE_STRING RegistryPath
 ) {
     NTSTATUS status = STATUS_SUCCESS;
-    UNREFERENCED_PARAMETER(RegistryPath);
 
     // Set unload routine
     DriverObject->DriverUnload = DriverUnload;
+
+    // Initialize PeaceMaker components
+    status = TDriverClass::Initialize(DriverObject, RegistryPath);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[DRIVER] Failed to initialize PeaceMaker components, status: 0x%08X\n", status);
+        return status;
+    }
 
     // Register callbacks
     status = PsSetCreateProcessNotifyRoutineEx2(
@@ -31,6 +120,7 @@ DriverEntry(
 
     if (!NT_SUCCESS(status)) {
         DbgPrint("[DRIVER] Failed to initialize process monitoring, status: 0x%08X\n", status);
+        TDriverClass::Cleanup(); // Clean up PeaceMaker components if registration fails
         return status;
     }
 
@@ -121,6 +211,9 @@ DriverUnload(
 
     // Cleanup process monitoring
     CleanupProcessMonitoring();
+    
+    // Cleanup PeaceMaker components
+    TDriverClass::Cleanup();
 
     DbgPrint("[DRIVER] Driver unloaded\n");
 }

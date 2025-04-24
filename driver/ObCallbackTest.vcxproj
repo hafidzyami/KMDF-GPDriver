@@ -101,14 +101,16 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>false</ExceptionHandling>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Midl>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </Midl>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions)  /INTEGRITYCHECK</AdditionalOptions>
+      <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
     </Link>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
@@ -132,8 +134,9 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </Midl>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions)  /INTEGRITYCHECK</AdditionalOptions>
+      <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
     </Link>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
@@ -157,8 +160,9 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </Midl>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions)  /INTEGRITYCHECK</AdditionalOptions>
+      <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
     </Link>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
@@ -182,8 +186,9 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </Midl>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>%(AdditionalOptions)  /INTEGRITYCHECK</AdditionalOptions>
+      <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
     </Link>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
@@ -202,6 +207,42 @@
       <PreCompiledHeader>Use</PreCompiledHeader>
       <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
     </ClCompile>
+    <!-- PeaceMaker Components -->
+    <ClCompile Include="common.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="AlertQueue.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="DetectionLogic.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="ImageFilter.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="ObjectFilter.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="StackWalker.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="StringFilters.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Inf Exclude="@(Inf)" Include="*.inf" />
@@ -215,6 +256,15 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="tdriver.h" />
+    <!-- PeaceMaker Headers -->
+    <ClInclude Include="common.h" />
+    <ClInclude Include="AlertQueue.h" />
+    <ClInclude Include="DetectionLogic.h" />
+    <ClInclude Include="ImageFilter.h" />
+    <ClInclude Include="ObjectFilter.h" />
+    <ClInclude Include="StackWalker.h" />
+    <ClInclude Include="StringFilters.h" />
+    <ClInclude Include="shared.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
