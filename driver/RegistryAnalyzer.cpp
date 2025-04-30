@@ -3,7 +3,11 @@
  * Based on K-Means clustering research for registry behavior analysis
  */
 #include "pch.h"
+#include "registry_structures.h"
 #include "RegistryAnalyzer.h"
+
+// Define _fltused for floating-point operations
+extern "C" int _fltused = 1;
 
 // Sensitive registry key prefixes for categorization
 const WCHAR* AutorunKeyPrefixes[] = {
@@ -47,6 +51,30 @@ const WCHAR* SensitiveKeyPrefixes[] = {
     L"\\REGISTRY\\USER\\S-1-5-21-*\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies"
 };
 
+const WCHAR* ProcessHijackKeyPrefixes[] = {
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SilentProcessExit",
+    L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\AppCertDlls",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ShellServiceObjects",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ShellExecuteHooks"
+};
+
+const WCHAR* DllHijackKeyPrefixes[] = {
+    L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\KnownDLLs",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Drivers32",
+    L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Print\\Monitors"
+};
+
+const WCHAR* ComObjectKeyPrefixes[] = {
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Classes\\CLSID",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Classes\\WOW6432Node\\CLSID",
+    L"\\REGISTRY\\USER\\S-1-5-21-*\\Software\\Classes\\CLSID",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Classes\\Interface",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\COM3",
+    L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\OLE"
+};
+
 /**
     Initialize the registry analyzer.
 */
@@ -59,9 +87,6 @@ RegistryAnalyzer::RegistryAnalyzer()
     
     // Initialize the key category table
     RtlZeroMemory(&KeyCategoryTable, sizeof(KeyCategoryTable));
-    
-    // Initialize the key category table - would initialize AVL table here
-    // but we'll use a simpler approach for categorization for now
 }
 
 /**
@@ -261,6 +286,40 @@ RegistryAnalyzer::RecordRegistryEvent(
         profile->SecuritySettingModificationCount++;
     }
     
+    // Check for process hijacking modifications
+    if (newEvent->KeyPath && newEvent->OperationType != RegistryOperationQuery && 
+        newEvent->KeyCategory == RegistryKeyCategoryProcessHijack) {
+        profile->CriticalSystemKeyModifications++;
+    }
+    
+    // Check for COM object registrations
+    if (newEvent->KeyPath && newEvent->OperationType != RegistryOperationQuery && 
+        newEvent->KeyCategory == RegistryKeyCategoryComObjects) {
+        profile->ComRegistryModifications++;
+    }
+    
+    // Calculate and update registry key depth
+    if (newEvent->KeyPath) {
+        ULONG keyDepth = CalculateKeyDepth(newEvent->KeyPath);
+        if (keyDepth > profile->RegistryKeyDepthMax) {
+            profile->RegistryKeyDepthMax = keyDepth;
+        }
+    }
+    
+    // Calculate registry value entropy if we have data
+    if (newEvent->DataBuffer && newEvent->DataBufferSize > 0) {
+        ULONG entropy = CalculateEntropy((PUCHAR)newEvent->DataBuffer, newEvent->DataBufferSize);
+        
+        // Update running average entropy (weighted by size)
+        if (profile->RegistryValueEntropyAvg == 0) {
+            profile->RegistryValueEntropyAvg = entropy;
+        } else {
+            // Weighted running average
+            profile->RegistryValueEntropyAvg = 
+                (profile->RegistryValueEntropyAvg * 3 + entropy) / 4;
+        }
+    }
+    
     // Check for burst patterns
     CheckBurstPattern(profile, currentTime);
     
@@ -268,6 +327,11 @@ RegistryAnalyzer::RecordRegistryEvent(
     profile->LastSeen = currentTime;
     if (profile->FirstSeen.QuadPart == 0) {
         profile->FirstSeen = currentTime;
+    }
+    
+    // Update process information periodically
+    if ((profile->TotalOperationCount % 100) == 0) {
+        UpdateProcessInformation(profile);
     }
     
     // Add the event to the list
@@ -323,6 +387,217 @@ RegistryAnalyzer::MapNotifyClassToOperationType(
             
         default:
             return RegistryOperationUnknown;
+    }
+}
+
+// This function is defined above
+
+/**
+    Calculate the depth of a registry key path.
+    @param KeyPath - Registry key path
+    @return The depth of the key path
+*/
+ULONG
+RegistryAnalyzer::CalculateKeyDepth(
+    _In_ PUNICODE_STRING KeyPath
+    )
+{
+    if (!KeyPath || !KeyPath->Buffer || KeyPath->Length == 0) {
+        return 0;
+    }
+    
+    ULONG depth = 0;
+    ULONG i;
+    
+    // Count the number of path separators ('\') in the key path
+    for (i = 0; i < KeyPath->Length / sizeof(WCHAR); i++) {
+        if (KeyPath->Buffer[i] == L'\\') {
+            depth++;
+        }
+    }
+    
+    // Return the depth (minus 1 for the leading separator if it exists)
+    return (depth > 0) ? depth : 0;
+}
+
+/**
+    Calculate Shannon entropy of data.
+    @param Data - Data buffer
+    @param Size - Size of data buffer
+    @return Entropy value scaled by 100 (0-800, where 800 is max entropy)
+*/
+ULONG 
+RegistryAnalyzer::CalculateEntropy(
+    _In_ PUCHAR Data,
+    _In_ ULONG Size
+    )
+{
+    if (!Data || Size == 0) {
+        return 0;
+    }
+    
+    // Count occurrences of each byte value
+    ULONG byteCount[256] = {0};
+    ULONG i;
+    
+    for (i = 0; i < Size; i++) {
+        byteCount[Data[i]]++;
+    }
+    
+    // Calculate a simplified entropy approximation (without using math.h)
+    // Use a simplified approach since we can't use log() in kernel mode easily
+    double entropy = 0.0;
+    double probability;
+    
+    for (i = 0; i < 256; i++) {
+        if (byteCount[i] > 0) {
+            probability = (double)byteCount[i] / Size;
+            
+            // Simplified entropy calculation using binary bits of information
+            // For probability p, contribution is p * -log2(p)
+            // We approximate -log2(p) based on the range where p falls
+            double negLog2;
+            if (probability >= 0.5)         negLog2 = 1.0;
+            else if (probability >= 0.25)   negLog2 = 2.0;
+            else if (probability >= 0.125)  negLog2 = 3.0;
+            else if (probability >= 0.0625) negLog2 = 4.0;
+            else if (probability >= 0.03125) negLog2 = 5.0;
+            else if (probability >= 0.015625) negLog2 = 6.0;
+            else if (probability >= 0.0078125) negLog2 = 7.0;
+            else                            negLog2 = 8.0; // Max level for byte values
+            
+            entropy += probability * negLog2;
+        }
+    }
+    
+    // Scale entropy to an integer value (max entropy is 8.0, scaling by 100 gives 800)
+    return (ULONG)(entropy * 100.0);
+}
+
+/**
+    Calculate entropy of path string (useful for detecting random/generated names).
+    @param Path - Unicode path string
+    @return Entropy value scaled by 100
+*/
+ULONG 
+RegistryAnalyzer::CalculatePathEntropy(
+    _In_ PUNICODE_STRING Path
+    )
+{
+    if (!Path || !Path->Buffer || Path->Length == 0) {
+        return 0;
+    }
+    
+    // Extract the filename part of the path
+    PWCHAR buffer = Path->Buffer;
+    ULONG length = Path->Length / sizeof(WCHAR);
+    ULONG fileNameStart = 0;
+    
+    // Find the last backslash or colon
+    for (ULONG i = 0; i < length; i++) {
+        if (buffer[i] == L'\\' || buffer[i] == L':') {
+            fileNameStart = i + 1;
+        }
+    }
+    
+    // Calculate entropy only on the filename part
+    ULONG fileNameLength = length - fileNameStart;
+    if (fileNameLength == 0) {
+        return 0;
+    }
+    
+    // Use the entropy calculation on the filename bytes
+    return CalculateEntropy((PUCHAR)&buffer[fileNameStart], fileNameLength * sizeof(WCHAR));
+}
+
+/**
+    Check if a process is running with elevated privileges.
+    @param ProcessId - Process ID to check
+    @return TRUE if elevated, FALSE otherwise
+*/
+BOOLEAN 
+RegistryAnalyzer::IsProcessElevated(
+    _In_ HANDLE ProcessId
+    )
+{
+    // In kernel mode, we can't directly check if a process is elevated like in user mode
+    // However, we can check if it has certain privileges or tokens
+    BOOLEAN isElevated = FALSE;
+    PEPROCESS processObject = NULL;
+    
+    // Try to open the process
+    NTSTATUS status = PsLookupProcessByProcessId(ProcessId, &processObject);
+    if (!NT_SUCCESS(status)) {
+        return FALSE;
+    }
+    
+    // Use a simple heuristic based on image name
+    //PUNICODE_STRING processImageName = NULL;
+
+    // Check if we have a valid process object
+    if (processObject) {
+        // Process has been found, we'll consider it potentially elevated
+        isElevated = TRUE;
+    }
+    
+    // Clean up
+    if (processObject) {
+        ObDereferenceObject(processObject);
+    }
+    
+    return isElevated;
+}
+
+/**
+    Update process information for profiling.
+    @param Profile - Process registry profile to update
+*/
+VOID 
+RegistryAnalyzer::UpdateProcessInformation(
+    _Inout_ PPROCESS_REGISTRY_PROFILE Profile
+    )
+{
+    LARGE_INTEGER currentTime;
+    
+    // Get current time
+    KeQuerySystemTime(&currentTime);
+    
+    // Update process age if we have create time
+    if (Profile->ProcessCreateTime.QuadPart != 0) {
+        Profile->ProcessAgeSeconds = (ULONG)((currentTime.QuadPart - Profile->ProcessCreateTime.QuadPart) / 10000000LL);
+    }
+    
+    // Calculate process name entropy if we have a path
+    if (Profile->ProcessPath) {
+        Profile->ProcessImageEntropy = CalculatePathEntropy(Profile->ProcessPath);
+    }
+    
+    // Check if process is elevated
+    Profile->IsElevated = IsProcessElevated(Profile->ProcessId);
+    
+    // Try to get session ID
+    PEPROCESS processObject = NULL;
+    if (NT_SUCCESS(PsLookupProcessByProcessId(Profile->ProcessId, &processObject))) {
+        // Get session ID using a fallback method
+        Profile->SessionId = 0; // Default to session 0 since we can't get it directly
+        ObDereferenceObject(processObject);
+    }
+    
+    // Calculate operation density (operations per minute)
+    if (Profile->FirstSeen.QuadPart != 0 && Profile->LastSeen.QuadPart != 0 && Profile->TotalOperationCount > 0) {
+        ULONGLONG durationSec = (Profile->LastSeen.QuadPart - Profile->FirstSeen.QuadPart) / 10000000LL;
+        if (durationSec > 0) {
+            Profile->OperationDensityPerMin = (ULONG)((Profile->TotalOperationCount * 60) / durationSec);
+        }
+    }
+    
+    // Calculate writes to reads ratio (scaled by 100 for integer precision)
+    ULONG writeOps = Profile->CreateOperationCount + Profile->ModifyOperationCount + Profile->DeleteOperationCount;
+    if (Profile->QueryOperationCount > 0) {
+        Profile->WritesToReadsRatio = (writeOps * 100) / Profile->QueryOperationCount;
+    } else if (writeOps > 0) {
+        // All writes, no reads
+        Profile->WritesToReadsRatio = 10000; // arbitrary high value indicating infinity
     }
 }
 
@@ -391,6 +666,30 @@ RegistryAnalyzer::CategorizeRegistryKey(
         }
     }
     
+    // Check process hijacking keys
+    for (ULONG i = 0; i < ARRAYSIZE(ProcessHijackKeyPrefixes); i++) {
+        RtlInitUnicodeString(&prefixString, ProcessHijackKeyPrefixes[i]);
+        if (RtlPrefixUnicodeString(&prefixString, KeyPath, TRUE)) {
+            return RegistryKeyCategoryProcessHijack;
+        }
+    }
+    
+    // Check DLL hijacking keys
+    for (ULONG i = 0; i < ARRAYSIZE(DllHijackKeyPrefixes); i++) {
+        RtlInitUnicodeString(&prefixString, DllHijackKeyPrefixes[i]);
+        if (RtlPrefixUnicodeString(&prefixString, KeyPath, TRUE)) {
+            return RegistryKeyCategoryDllHijack;
+        }
+    }
+    
+    // Check COM object keys
+    for (ULONG i = 0; i < ARRAYSIZE(ComObjectKeyPrefixes); i++) {
+        RtlInitUnicodeString(&prefixString, ComObjectKeyPrefixes[i]);
+        if (RtlPrefixUnicodeString(&prefixString, KeyPath, TRUE)) {
+            return RegistryKeyCategoryComObjects;
+        }
+    }
+    
     // Default category
     return RegistryKeyCategoryNormal;
 }
@@ -437,6 +736,34 @@ RegistryAnalyzer::FindOrCreateProcessProfile(
             if (profile->ProcessPath != NULL) {
                 // Extract just the process name from the path for easy access
                 profile->ProcessName = profile->ProcessPath;
+                
+                // Calculate path entropy
+                profile->ProcessImageEntropy = CalculatePathEntropy(profile->ProcessPath);
+            }
+            
+            // Get process creation time if available
+            PEPROCESS processObject = NULL;
+            if (NT_SUCCESS(PsLookupProcessByProcessId(ProcessId, &processObject))) {
+                // Get process creation time (kernel time)
+                LARGE_INTEGER createTime = {0};
+                KeQuerySystemTime(&createTime);
+                profile->ProcessCreateTime = createTime;
+                
+                // Get session ID using a fallback method
+                profile->SessionId = 0; // Default to session 0 since we can't get it directly
+                
+                ObDereferenceObject(processObject);
+            }
+            
+            // Check if process is elevated
+            profile->IsElevated = IsProcessElevated(ProcessId);
+            
+            // Initialize other fields
+            LARGE_INTEGER currentTime;
+            KeQuerySystemTime(&currentTime);
+            
+            if (profile->ProcessCreateTime.QuadPart != 0) {
+                profile->ProcessAgeSeconds = (ULONG)((currentTime.QuadPart - profile->ProcessCreateTime.QuadPart) / 10000000ULL);
             }
             
             // Add to the list
@@ -545,6 +872,18 @@ RegistryAnalyzer::UpdateKeyAccessStats(
         case RegistryKeyCategorySensitive:
             Profile->SensitiveKeysAccessed++;
             break;
+            
+        case RegistryKeyCategoryProcessHijack:
+            Profile->ProcessHijackKeysAccessed++;
+            break;
+            
+        case RegistryKeyCategoryDllHijack:
+            Profile->DllHijackKeysAccessed++;
+            break;
+            
+        case RegistryKeyCategoryComObjects:
+            Profile->ComObjectKeysAccessed++;
+            break;
     }
     
     // Increment unique keys counter - in a real implementation,
@@ -651,14 +990,12 @@ RegistryAnalyzer::GetProcessProfileCount()
 /**
     Export feature vectors for use in user-mode clustering.
     @param FeatureVectors - Buffer to receive feature vectors
-    @param MaxFeatureVectors - Maximum number of vectors to export
     @param ActualFeatureVectors - Actual number of vectors exported
     @return NTSTATUS value indicating success or failure
 */
 NTSTATUS 
 RegistryAnalyzer::ExportFeatureVectors(
     _Out_ PREGISTRY_FEATURE_VECTOR FeatureVectors,
-    _In_ ULONG MaxFeatureVectors,
     _Out_ PULONG ActualFeatureVectors
     )
 {
@@ -671,12 +1008,35 @@ RegistryAnalyzer::ExportFeatureVectors(
     *ActualFeatureVectors = 0;
     
     // Check parameters
-    if (!FeatureVectors || MaxFeatureVectors == 0) {
+    if (!FeatureVectors) {
         return STATUS_INVALID_PARAMETER;
     }
     
+    // Count how many profiles we have that meet our criteria
+    ULONG totalEligibleProfiles = 0;
+    FltAcquirePushLockShared(&ProcessProfileLock);
+    
+    for (entry = ProcessProfileListHead.Flink; entry != &ProcessProfileListHead; entry = entry->Flink) {
+        profile = CONTAINING_RECORD(entry, PROCESS_REGISTRY_PROFILE, ListEntry);
+        
+        // Only count profiles with sufficient operations
+        if (profile->TotalOperationCount >= 5) {
+            totalEligibleProfiles++;
+        }
+    }
+    
+    FltReleasePushLock(&ProcessProfileLock);
+    
     // Zero out the buffer to ensure it's initialized
-    RtlZeroMemory(FeatureVectors, MaxFeatureVectors * sizeof(REGISTRY_FEATURE_VECTOR));
+    RtlZeroMemory(FeatureVectors, totalEligibleProfiles * sizeof(REGISTRY_FEATURE_VECTOR));
+    
+    // Calculate actual space needed per feature vector
+    SIZE_T featureVectorSize = sizeof(REGISTRY_FEATURE_VECTOR);
+    
+    // Ensure we've allocated enough memory for the buffer
+    if (totalEligibleProfiles > 0 && !FeatureVectors) {
+        return STATUS_INVALID_PARAMETER;
+    }
 
     
     // Acquire shared lock to iterate profiles
@@ -684,7 +1044,7 @@ RegistryAnalyzer::ExportFeatureVectors(
     
     // Iterate through profiles and fill feature vectors
     for (entry = ProcessProfileListHead.Flink; 
-         entry != &ProcessProfileListHead && count < MaxFeatureVectors; 
+         entry != &ProcessProfileListHead && count < totalEligibleProfiles; 
          entry = entry->Flink)
     {
         profile = CONTAINING_RECORD(entry, PROCESS_REGISTRY_PROFILE, ListEntry);
@@ -695,65 +1055,88 @@ RegistryAnalyzer::ExportFeatureVectors(
         }
         
         // Ensure we don't exceed the provided buffer
-        if (count >= MaxFeatureVectors) {
+        if (count >= totalEligibleProfiles) {
             // We've exceeded the buffer size, stop processing
             break;
         }
         
         // Process this profile and populate feature vector
         // Fill feature vector
-        RtlZeroMemory(&FeatureVectors[count], sizeof(REGISTRY_FEATURE_VECTOR));
+        if (count < totalEligibleProfiles) { // Ensure we don't exceed buffer bounds
+            RtlZeroMemory(&FeatureVectors[count], featureVectorSize);
+            
+            // Basic identification
+            FeatureVectors[count].ProcessId = profile->ProcessId;
         
-        // Basic identification
-        FeatureVectors[count].ProcessId = profile->ProcessId;
+            // Copy process name if available
+            if (profile->ProcessName && profile->ProcessName->Buffer) {
+                RtlStringCchCopyW(FeatureVectors[count].ProcessName, MAX_PATH, profile->ProcessName->Buffer);
+            }
+            
+            // Process information metrics
+            FeatureVectors[count].ProcessAgeSeconds = profile->ProcessAgeSeconds;
+            FeatureVectors[count].ProcessImageEntropy = profile->ProcessImageEntropy;
+            FeatureVectors[count].SessionId = profile->SessionId;
+            FeatureVectors[count].IsElevated = profile->IsElevated;
         
-        // Copy process name if available
-        if (profile->ProcessName && profile->ProcessName->Buffer) {
-            RtlStringCchCopyW(FeatureVectors[count].ProcessName, MAX_PATH, profile->ProcessName->Buffer);
+            // Time metrics
+            ExSystemTimeToLocalTime(&profile->FirstSeen, &localTime);
+            FeatureVectors[count].FirstSeenTime = localTime.QuadPart / 10000000ULL - 11644473600ULL; // Convert to Unix epoch
+            
+            ExSystemTimeToLocalTime(&profile->LastSeen, &localTime);
+            FeatureVectors[count].LastSeenTime = localTime.QuadPart / 10000000ULL - 11644473600ULL; // Convert to Unix epoch
+            
+            if (profile->FirstSeen.QuadPart != 0 && profile->LastSeen.QuadPart != 0) {
+                FeatureVectors[count].OperationDurationSec = 
+                    (profile->LastSeen.QuadPart - profile->FirstSeen.QuadPart) / 10000000ULL;
+            }
+            
+            if (profile->ProcessCreateTime.QuadPart != 0) {
+                ExSystemTimeToLocalTime(&profile->ProcessCreateTime, &localTime);
+                FeatureVectors[count].ProcessCreateTime = localTime.QuadPart / 10000000ULL - 11644473600ULL; // Convert to Unix epoch
+            }
+            
+            // Operation counts
+            FeatureVectors[count].TotalOperationCount = profile->TotalOperationCount;
+            FeatureVectors[count].CreateOperationCount = profile->CreateOperationCount;
+            FeatureVectors[count].ModifyOperationCount = profile->ModifyOperationCount;
+            FeatureVectors[count].DeleteOperationCount = profile->DeleteOperationCount;
+            FeatureVectors[count].QueryOperationCount = profile->QueryOperationCount;
+        
+            // Key access patterns
+            FeatureVectors[count].UniqueKeysAccessed = profile->UniqueKeysAccessed;
+            FeatureVectors[count].AutorunKeysAccessed = profile->AutorunKeysAccessed;
+            FeatureVectors[count].SecurityKeysAccessed = profile->SecurityKeysAccessed;
+            FeatureVectors[count].FileAssocKeysAccessed = profile->FileAssocKeysAccessed;
+            FeatureVectors[count].NetworkingKeysAccessed = profile->NetworkingKeysAccessed;
+            FeatureVectors[count].ServicesKeysAccessed = profile->ServicesKeysAccessed;
+            FeatureVectors[count].SensitiveKeysAccessed = profile->SensitiveKeysAccessed;
+            FeatureVectors[count].ProcessHijackKeysAccessed = profile->ProcessHijackKeysAccessed;
+            FeatureVectors[count].DllHijackKeysAccessed = profile->DllHijackKeysAccessed;
+            FeatureVectors[count].ComObjectKeysAccessed = profile->ComObjectKeysAccessed;
+            
+            // Temporal patterns
+            FeatureVectors[count].OperationBurstCount = profile->OperationBurstCount;
+            FeatureVectors[count].MaxOperationsPerBurst = profile->MaxOperationsPerBurst;
+            FeatureVectors[count].BurstIntervalMs = profile->BurstIntervalMs;
+            FeatureVectors[count].OperationDensityPerMin = profile->OperationDensityPerMin;
+            FeatureVectors[count].TimingVariance = profile->TimingVariance;
+            
+            // Remote operations
+            FeatureVectors[count].RemoteOperationCount = profile->RemoteOperationCount;
+            
+            // Suspicious indicators
+            FeatureVectors[count].FileExtensionModificationCount = profile->FileExtensionModificationCount;
+            FeatureVectors[count].SecuritySettingModificationCount = profile->SecuritySettingModificationCount;
+            FeatureVectors[count].WritesToReadsRatio = profile->WritesToReadsRatio;
+            FeatureVectors[count].RegistryKeyDepthMax = profile->RegistryKeyDepthMax;
+            FeatureVectors[count].RegistryValueEntropyAvg = profile->RegistryValueEntropyAvg;
+            FeatureVectors[count].ComRegistryModifications = profile->ComRegistryModifications;
+            FeatureVectors[count].CriticalSystemKeyModifications = profile->CriticalSystemKeyModifications;
+            
+            // Increment counter only after successful processing
+            count++;
         }
-        
-        // Time metrics
-        ExSystemTimeToLocalTime(&profile->FirstSeen, &localTime);
-        FeatureVectors[count].FirstSeenTime = localTime.QuadPart / 10000000ULL - 11644473600ULL; // Convert to Unix epoch
-        
-        ExSystemTimeToLocalTime(&profile->LastSeen, &localTime);
-        FeatureVectors[count].LastSeenTime = localTime.QuadPart / 10000000ULL - 11644473600ULL; // Convert to Unix epoch
-        
-        if (profile->FirstSeen.QuadPart != 0 && profile->LastSeen.QuadPart != 0) {
-            FeatureVectors[count].OperationDurationSec = 
-                (profile->LastSeen.QuadPart - profile->FirstSeen.QuadPart) / 10000000ULL;
-        }
-        
-        // Operation counts
-        FeatureVectors[count].TotalOperationCount = profile->TotalOperationCount;
-        FeatureVectors[count].CreateOperationCount = profile->CreateOperationCount;
-        FeatureVectors[count].ModifyOperationCount = profile->ModifyOperationCount;
-        FeatureVectors[count].DeleteOperationCount = profile->DeleteOperationCount;
-        FeatureVectors[count].QueryOperationCount = profile->QueryOperationCount;
-        
-        // Key access patterns
-        FeatureVectors[count].UniqueKeysAccessed = profile->UniqueKeysAccessed;
-        FeatureVectors[count].AutorunKeysAccessed = profile->AutorunKeysAccessed;
-        FeatureVectors[count].SecurityKeysAccessed = profile->SecurityKeysAccessed;
-        FeatureVectors[count].FileAssocKeysAccessed = profile->FileAssocKeysAccessed;
-        FeatureVectors[count].NetworkingKeysAccessed = profile->NetworkingKeysAccessed;
-        FeatureVectors[count].ServicesKeysAccessed = profile->ServicesKeysAccessed;
-        FeatureVectors[count].SensitiveKeysAccessed = profile->SensitiveKeysAccessed;
-        
-        // Burst metrics
-        FeatureVectors[count].OperationBurstCount = profile->OperationBurstCount;
-        FeatureVectors[count].MaxOperationsPerBurst = profile->MaxOperationsPerBurst;
-        FeatureVectors[count].BurstIntervalMs = profile->BurstIntervalMs;
-        
-        // Remote operations
-        FeatureVectors[count].RemoteOperationCount = profile->RemoteOperationCount;
-        
-        // Suspicious indicators
-        FeatureVectors[count].FileExtensionModificationCount = profile->FileExtensionModificationCount;
-        FeatureVectors[count].SecuritySettingModificationCount = profile->SecuritySettingModificationCount;
-        
-        // Increment counter only after successful processing
-        count++;
     }
     
     FltReleasePushLock(&ProcessProfileLock);
@@ -834,6 +1217,19 @@ RegistryAnalyzer::ExportFeatureVectorsToCSVBuffer(
     // Ensure buffer is initialized if provided
     if (CSVBuffer && BufferSize > 0) {
         RtlZeroMemory(CSVBuffer, BufferSize);
+        // If empty, nothing to do
+        if (BufferSize == 0) {
+            return STATUS_SUCCESS;
+        }
+    } else if (!CSVBuffer && BufferSize > 0) {
+        // Invalid buffer
+        return STATUS_INVALID_PARAMETER;
+    }
+    
+    // If buffer size is zero or no buffer is provided, still initialize output value
+    if (BufferSize == 0 || !CSVBuffer) {
+        *ActualSize = 0;
+        return STATUS_SUCCESS;
     }
     
     // Get number of feature vectors
@@ -866,40 +1262,51 @@ RegistryAnalyzer::ExportFeatureVectorsToCSVBuffer(
         return STATUS_SUCCESS;
     }
     
-    // Allocate memory for feature vectors
+    // Set number of feature vectors to export (all eligible profiles)
+    ULONG maxVectorsToExport = featureVectorCount;
+    
+    // Allocate memory for feature vectors with buffer size validation
+    SIZE_T vectorSize = sizeof(REGISTRY_FEATURE_VECTOR);
     featureVectors = (PREGISTRY_FEATURE_VECTOR)ExAllocatePool2(
         POOL_FLAG_NON_PAGED, 
-        featureVectorCount * sizeof(REGISTRY_FEATURE_VECTOR),
+        maxVectorsToExport * vectorSize,
         REGISTRY_FEATURE_TAG);
     
     if (featureVectors == NULL) {
+        *ActualSize = 0; // Ensure output is initialized
         return STATUS_INSUFFICIENT_RESOURCES;
     }
     
+    // Zero out the allocated memory to be safe
+    RtlZeroMemory(featureVectors, maxVectorsToExport * vectorSize);
+    
     // Get feature vectors
     ULONG actualCount = 0;
-    status = this->ExportFeatureVectors(featureVectors, featureVectorCount, &actualCount);
+    status = ExportFeatureVectors(featureVectors, &actualCount);
     
-    if (!NT_SUCCESS(status)) {
+    if (!NT_SUCCESS(status) || actualCount == 0) {
         ExFreePoolWithTag(featureVectors, REGISTRY_FEATURE_TAG);
-        return status;
+        *ActualSize = 0; // Ensure output is initialized
+        return status != STATUS_SUCCESS ? status : STATUS_NO_DATA_DETECTED;
     }
     
     // Start building CSV
     // First write CSV header
-    CHAR csvHeader[] = "ProcessId,ProcessName,FirstSeenTime,LastSeenTime,OperationDurationSec,"
+    CHAR csvHeader[] = "ProcessId,ProcessName,ProcessAgeSeconds,ProcessImageEntropy,SessionId,IsElevated,"
+                      "FirstSeenTime,LastSeenTime,OperationDurationSec,ProcessCreateTime,"
                       "TotalOperationCount,CreateOperationCount,ModifyOperationCount,DeleteOperationCount,QueryOperationCount,"
                       "UniqueKeysAccessed,AutorunKeysAccessed,SecurityKeysAccessed,FileAssocKeysAccessed,"
-                      "NetworkingKeysAccessed,ServicesKeysAccessed,SensitiveKeysAccessed,"
-                      "OperationBurstCount,MaxOperationsPerBurst,BurstIntervalMs,"
-                      "RemoteOperationCount,FileExtensionModificationCount,SecuritySettingModificationCount\r\n";
+                      "NetworkingKeysAccessed,ServicesKeysAccessed,SensitiveKeysAccessed,ProcessHijackKeysAccessed,DllHijackKeysAccessed,ComObjectKeysAccessed,"
+                      "OperationBurstCount,MaxOperationsPerBurst,BurstIntervalMs,OperationDensityPerMin,TimingVariance,"
+                      "RemoteOperationCount,FileExtensionModificationCount,SecuritySettingModificationCount,"
+                      "WritesToReadsRatio,RegistryKeyDepthMax,RegistryValueEntropyAvg,ComRegistryModifications,CriticalSystemKeyModifications\r\n";
     
     requiredBufferSize = (ULONG)strlen(csvHeader);
     
     // Calculate required buffer size
     for (ULONG i = 0; i < actualCount; i++) {
-        // Conservative estimate: 25 bytes per numeric field (24 fields) + process name (MAX_PATH) + commas and newline
-        requiredBufferSize += (25 * 24) + MAX_PATH + 25;
+        // Conservative estimate: 25 bytes per numeric field (35 fields) + process name (MAX_PATH) + commas and newline
+        requiredBufferSize += (25 * 35) + MAX_PATH + 50;
     }
     
     // Check if buffer is large enough
@@ -937,12 +1344,17 @@ RegistryAnalyzer::ExportFeatureVectorsToCSVBuffer(
         status = RtlStringCchPrintfA(
             (NTSTRSAFE_PSTR)(CSVBuffer + currentOffset),
             BufferSize - currentOffset,
-            "%lu,%s,%llu,%llu,%llu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\r\n",
+            "%lu,%s,%lu,%lu,%lu,%d,%llu,%llu,%llu,%llu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\r\n",
             HandleToUlong(fv->ProcessId),
             ansiProcessName.Buffer,
+            fv->ProcessAgeSeconds,
+            fv->ProcessImageEntropy,
+            fv->SessionId,
+            fv->IsElevated,
             fv->FirstSeenTime,
             fv->LastSeenTime,
             fv->OperationDurationSec,
+            fv->ProcessCreateTime,
             fv->TotalOperationCount,
             fv->CreateOperationCount,
             fv->ModifyOperationCount,
@@ -955,12 +1367,22 @@ RegistryAnalyzer::ExportFeatureVectorsToCSVBuffer(
             fv->NetworkingKeysAccessed,
             fv->ServicesKeysAccessed,
             fv->SensitiveKeysAccessed,
+            fv->ProcessHijackKeysAccessed,
+            fv->DllHijackKeysAccessed,
+            fv->ComObjectKeysAccessed,
             fv->OperationBurstCount,
             fv->MaxOperationsPerBurst,
             fv->BurstIntervalMs,
+            fv->OperationDensityPerMin,
+            fv->TimingVariance,
             fv->RemoteOperationCount,
             fv->FileExtensionModificationCount,
-            fv->SecuritySettingModificationCount
+            fv->SecuritySettingModificationCount,
+            fv->WritesToReadsRatio,
+            fv->RegistryKeyDepthMax,
+            fv->RegistryValueEntropyAvg,
+            fv->ComRegistryModifications,
+            fv->CriticalSystemKeyModifications
         );
         
         if (!NT_SUCCESS(status)) {

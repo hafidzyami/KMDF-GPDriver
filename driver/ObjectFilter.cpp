@@ -54,7 +54,7 @@ ObjectFilter::ObjectFilter(
     //
     // Initialize the registry analyzer for malware behavior detection
     //
-    ObjectFilter::registryAnalyzer = new (NonPagedPool, 'aRmP') REGISTRY_ANALYZER();
+    ObjectFilter::registryAnalyzer = new (NonPagedPool, 'aRmP') RegistryAnalyzer();
     if (ObjectFilter::registryAnalyzer == NULL)
     {
         DBGPRINT("ObjectFilter!ObjectFilter: Failed to allocate memory for registry analyzer.");
