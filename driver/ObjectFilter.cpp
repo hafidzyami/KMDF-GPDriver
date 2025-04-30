@@ -13,6 +13,7 @@ LARGE_INTEGER ObjectFilter::RegistryFilterCookie;
 PDETECTION_LOGIC ObjectFilter::detector;
 STACK_WALKER ObjectFilter::walker;
 PSTRING_FILTERS ObjectFilter::RegistryStringFilters;
+PREGISTRY_ANALYZER ObjectFilter::registryAnalyzer;
 
 // Tamper Guard components
 HANDLE ObjectFilter::ProtectedProcessId;
@@ -49,6 +50,17 @@ ObjectFilter::ObjectFilter(
     // Restore existing filters.
     //
     ObjectFilter::RegistryStringFilters->RestoreFilters();
+
+    //
+    // Initialize the registry analyzer for malware behavior detection
+    //
+    ObjectFilter::registryAnalyzer = new (NonPagedPool, 'aRmP') REGISTRY_ANALYZER();
+    if (ObjectFilter::registryAnalyzer == NULL)
+    {
+        DBGPRINT("ObjectFilter!ObjectFilter: Failed to allocate memory for registry analyzer.");
+        *InitializeStatus = STATUS_NO_MEMORY;
+        return;
+    }
 
     //
     // Put our altitude into a UNICODE_STRING.
@@ -118,6 +130,13 @@ ObjectFilter::~ObjectFilter()
     
     ObjectFilter::RegistryStringFilters->~StringFilters();
     ExFreePoolWithTag(ObjectFilter::RegistryStringFilters, STRING_REGISTRY_FILTERS_TAG);
+    
+    // Clean up Registry Analyzer
+    if (ObjectFilter::registryAnalyzer)
+    {
+        ObjectFilter::registryAnalyzer->~RegistryAnalyzer();
+        ExFreePoolWithTag(ObjectFilter::registryAnalyzer, 'aRmP');
+    }
     
     // Clean up Tamper Guard components
     ObUnRegisterCallbacks(RegistrationHandle);
@@ -342,6 +361,7 @@ Exit:
 
 /**
     The callback for registry operations. If necessary, blocks certain operations on protected keys/values.
+    Also records registry events for behavior analysis.
     @param CallbackContext - Unreferenced parameter.
     @param OperationClass - The type of registry operation.
     @param Argument2 - A pointer to the structure associated with the operation.
@@ -358,8 +378,67 @@ ObjectFilter::RegistryCallback(
     NTSTATUS returnStatus;
     PREG_SET_VALUE_KEY_INFORMATION setValueInformation;
     PREG_DELETE_VALUE_KEY_INFORMATION deleteValueInformation;
+    PREG_CREATE_KEY_INFORMATION createKeyInformation;
+    PREG_QUERY_KEY_INFORMATION queryKeyInformation;
+    PVOID registryObject = NULL;
+    PUNICODE_STRING valueName = NULL;
+    PVOID dataBuffer = NULL;
+    ULONG dataSize = 0;
+    ULONG valueType = 0;
+    HANDLE processId;
 
     returnStatus = STATUS_SUCCESS;
+    processId = PsGetCurrentProcessId();
+
+    //
+    // Extract relevant information for registry behavior analysis
+    //
+    switch (OperationClass)
+    {
+    case RegNtPreSetValueKey:
+        setValueInformation = RCAST<PREG_SET_VALUE_KEY_INFORMATION>(Argument2);
+        registryObject = setValueInformation->Object;
+        valueName = setValueInformation->ValueName;
+        dataBuffer = setValueInformation->Data;
+        dataSize = setValueInformation->DataSize;
+        valueType = setValueInformation->Type;
+        break;
+
+    case RegNtPreDeleteValueKey:
+        deleteValueInformation = RCAST<PREG_DELETE_VALUE_KEY_INFORMATION>(Argument2);
+        registryObject = deleteValueInformation->Object;
+        valueName = deleteValueInformation->ValueName;
+        break;
+
+    case RegNtPreCreateKey:
+    case RegNtPreCreateKeyEx:
+        createKeyInformation = RCAST<PREG_CREATE_KEY_INFORMATION>(Argument2);
+        registryObject = createKeyInformation->RootObject;
+        valueName = createKeyInformation->CompleteName;
+        break;
+
+    case RegNtPreQueryKey:
+    case RegNtPreQueryValueKey:
+        queryKeyInformation = RCAST<PREG_QUERY_KEY_INFORMATION>(Argument2);
+        registryObject = queryKeyInformation->Object;
+        break;
+    }
+
+    //
+    // Record registry activity for behavior analysis if we have registry object
+    //
+    if (registryObject != NULL && ObjectFilter::registryAnalyzer != NULL)
+    {
+        ObjectFilter::registryAnalyzer->RecordRegistryEvent(
+            processId,
+            OperationClass,
+            registryObject,
+            valueName,
+            dataBuffer,
+            dataSize,
+            valueType
+        );
+    }
 
     //
     // PeaceMaker is not designed to block kernel operations.

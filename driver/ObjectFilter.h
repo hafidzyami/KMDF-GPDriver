@@ -10,6 +10,7 @@
 #include "StackWalker.h"
 #include "DetectionLogic.h"
 #include "ImageFilter.h"
+#include "RegistryAnalyzer.h"
 #include "shared.h"
 
 typedef class ObjectFilter
@@ -40,6 +41,11 @@ typedef class ObjectFilter
 	static STACK_WALKER walker;
 	static PDETECTION_LOGIC detector;
 
+	//
+	// Registry behavior analyzer for malware detection
+	//
+	static PREGISTRY_ANALYZER registryAnalyzer;
+
     // Tamper Guard components
 	static OB_PREOP_CALLBACK_STATUS PreOperationCallback(
         _In_ PVOID RegistrationContext,
@@ -65,6 +71,10 @@ public:
     VOID UpdateProtectedProcess(
         _In_ HANDLE NewProcessId
         );
+
+	PREGISTRY_ANALYZER GetRegistryAnalyzer() {
+		return registryAnalyzer;
+	}
 } OBJECT_FILTER, *POBJECT_FILTER;
 
 // Registry Filter tags

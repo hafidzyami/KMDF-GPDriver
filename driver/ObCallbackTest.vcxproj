@@ -243,6 +243,16 @@
       <PreCompiledHeader>Use</PreCompiledHeader>
       <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
     </ClCompile>
+    <ClCompile Include="RegistryAnalyzer.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="ObjectFilterRegistry.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Inf Exclude="@(Inf)" Include="*.inf" />
@@ -265,6 +275,7 @@
     <ClInclude Include="StackWalker.h" />
     <ClInclude Include="StringFilters.h" />
     <ClInclude Include="shared.h" />
+    <ClInclude Include="RegistryAnalyzer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
