@@ -1,1 +1,1 @@
-sc create gp-driver type= kernel binPath= %cd%\driver\x64\Release\ObCallbackTest\ObCallbackTest.sys
+sc create gp-driver type= kernel binPath= %cd%\ObCallbackTest.sys
