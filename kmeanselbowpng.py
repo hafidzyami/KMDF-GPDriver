@@ -306,7 +306,230 @@ class CombinedMalwareDetector:
         
         # Call the detailed analysis function
         self._create_detailed_analysis(data, classifications)
-
+    
+    def visualize_cluster_vs_rules(self, data, classifications):
+        """Visualize differences between cluster assignment and rule-based detection"""
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+        
+        # Plot 1: Cluster assignment
+        for i in range(self.n_clusters):
+            cluster_data = data[data['Cluster'] == i]
+            if i == 0:
+                label = f'Cluster {i} (Benign)'
+                color = 'green'
+            else:
+                label = f'Cluster {i} (Suspicious/Malware)'
+                color = 'red' if i == 1 else 'orange'
+            
+            ax1.scatter(cluster_data['ProcessImageEntropy'], 
+                    cluster_data['SensitiveKeysAccessed'],
+                    c=color, 
+                    label=label, 
+                    alpha=0.6,
+                    s=100)
+        
+        ax1.set_xlabel('Process Image Entropy')
+        ax1.set_ylabel('Sensitive Keys Accessed')
+        ax1.set_yscale('log')
+        ax1.set_title('Cluster Assignment')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Rule-based classification
+        colors_rule = {'benign': 'green', 'suspicious': 'orange', 'malware': 'red'}
+        
+        for class_type in colors_rule:
+            mask = np.array(classifications) == class_type
+            ax2.scatter(data.loc[mask, 'ProcessImageEntropy'], 
+                    data.loc[mask, 'SensitiveKeysAccessed'],
+                    c=colors_rule[class_type], 
+                    label=class_type.capitalize(), 
+                    alpha=0.6,
+                    s=100)
+        
+        # Add threshold lines
+        ax2.axvline(x=self.thresholds['entropy_high'], color='red', linestyle='--', alpha=0.7)
+        ax2.axhline(y=self.thresholds['sensitive_keys_high'], color='red', linestyle='--', alpha=0.7)
+        
+        # Highlight points detected by Rule4
+        rule4_mask = data['DetectionReason'].str.contains('Rule4', na=False)
+        if rule4_mask.any():
+            rule4_data = data[rule4_mask]
+            ax2.scatter(rule4_data['ProcessImageEntropy'], 
+                    rule4_data['SensitiveKeysAccessed'],
+                    c='purple', 
+                    s=200, 
+                    marker='*', 
+                    edgecolors='black',
+                    linewidth=2,
+                    label='Rule4 Detection')
+            
+            # Annotate Rule4 points
+            for idx, row in rule4_data.iterrows():
+                # Only show annotation for points in benign cluster
+                if row['Cluster'] == 0:
+                    ax2.annotate('Rule4: High Entropy\n(Cluster: Benign)', 
+                                xy=(row['ProcessImageEntropy'], row['SensitiveKeysAccessed']),
+                                xytext=(10, 10), 
+                                textcoords='offset points',
+                                bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.7),
+                                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+        
+        ax2.set_xlabel('Process Image Entropy')
+        ax2.set_ylabel('Sensitive Keys Accessed')
+        ax2.set_yscale('log')
+        ax2.set_title('Rule-Based Classification')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        
+        plt.suptitle('Comparison: Cluster Assignment vs Rule-Based Detection', fontsize=16)
+        plt.tight_layout()
+        plt.savefig('cluster_vs_rules_comparison.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # Create a detailed view showing why Rule4 triggered
+        fig2, ax3 = plt.subplots(figsize=(10, 8))
+        
+        # Plot all points
+        for class_type in colors_rule:
+            mask = np.array(classifications) == class_type
+            ax3.scatter(data.loc[mask, 'ProcessImageEntropy'], 
+                    data.loc[mask, 'SensitiveKeysAccessed'],
+                    c=colors_rule[class_type], 
+                    label=class_type.capitalize(), 
+                    alpha=0.3,
+                    s=50)
+        
+        # Highlight Rule4 detections
+        if rule4_mask.any():
+            rule4_data = data[rule4_mask]
+            
+            # Plot Rule4 points
+            ax3.scatter(rule4_data['ProcessImageEntropy'], 
+                    rule4_data['SensitiveKeysAccessed'],
+                    c='purple', 
+                    s=300, 
+                    marker='*', 
+                    edgecolors='black',
+                    linewidth=3,
+                    label='Rule4 Detection')
+            
+            # Add detailed annotations
+            for idx, row in rule4_data.iterrows():
+                process_name = row['ProcessName'].split('\\')[-1][:20]
+                annotation_text = (f"Process: {process_name}...\n"
+                                f"Cluster: {row['Cluster']}\n"
+                                f"Process Entropy: {row['ProcessImageEntropy']:.1f}\n"
+                                f"Registry Entropy: {row['RegistryValueEntropyAvg']:.1f}\n"
+                                f"Sensitive Keys: {row['SensitiveKeysAccessed']}")
+                
+                ax3.annotate(annotation_text, 
+                            xy=(row['ProcessImageEntropy'], row['SensitiveKeysAccessed']),
+                            xytext=(15, 15), 
+                            textcoords='offset points',
+                            bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.9),
+                            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0', lw=2))
+        
+        # Add threshold lines
+        ax3.axvline(x=self.thresholds['entropy_high'], color='red', linestyle='--', alpha=0.7, lw=2)
+        ax3.axhline(y=self.thresholds['sensitive_keys_high'], color='red', linestyle='--', alpha=0.7, lw=2)
+        
+        # Add threshold for registry entropy (for Rule4)
+        ax3.axvline(x=self.thresholds['entropy_suspicious'], color='orange', linestyle='--', alpha=0.7, lw=2)
+        
+        # Set axis limits to prevent extreme values
+        ax3.set_xlim(250, 350)  # Typical range for ProcessImageEntropy
+        ax3.set_ylim(1, data['SensitiveKeysAccessed'].max() * 1.1)  # Handle log scale properly
+        
+        # Add labels for thresholds
+        ax3.text(self.thresholds['entropy_high'] + 1, 10, 
+                'High Entropy\nThreshold', 
+                rotation=90, verticalalignment='bottom', horizontalalignment='left',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+        
+        ax3.text(255, self.thresholds['sensitive_keys_high'] * 1.1, 
+                'High Sensitive Keys Threshold', 
+                verticalalignment='bottom', horizontalalignment='left',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+        
+        # Add note about Rule4
+        ax3.text(0.02, 0.98, 
+                'Rule4: High Process Entropy + High Registry Entropy\n(Registry entropy not shown in this view)',
+                transform=ax3.transAxes,
+                verticalalignment='top',
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='lightblue', alpha=0.8))
+        
+        ax3.set_xlabel('Process Image Entropy', fontsize=12)
+        ax3.set_ylabel('Sensitive Keys Accessed', fontsize=12)
+        ax3.set_yscale('log')
+        ax3.set_title('Rule-Based Detection Details', fontsize=14)
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig('rule_based_detection_detail.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # Create additional plot to show registry entropy dimension
+        fig3, ax4 = plt.subplots(figsize=(10, 8))
+        
+        # 3D-like visualization using color for registry entropy
+        scatter = ax4.scatter(data['ProcessImageEntropy'], 
+                            data['SensitiveKeysAccessed'],
+                            c=data['RegistryValueEntropyAvg'], 
+                            cmap='viridis',
+                            s=100,
+                            alpha=0.7)
+        
+        # Add colorbar
+        cbar = plt.colorbar(scatter)
+        cbar.set_label('Registry Value Entropy Average', rotation=270, labelpad=20)
+        
+        # Highlight Rule4 detections
+        if rule4_mask.any():
+            rule4_data = data[rule4_mask]
+            ax4.scatter(rule4_data['ProcessImageEntropy'], 
+                    rule4_data['SensitiveKeysAccessed'],
+                    c='red', 
+                    s=300, 
+                    marker='*', 
+                    edgecolors='black',
+                    linewidth=3,
+                    label='Rule4 Detection')
+            
+            # Annotate
+            for idx, row in rule4_data.iterrows():
+                ax4.annotate(f"Rule4\nRegistry Entropy: {row['RegistryValueEntropyAvg']:.1f}", 
+                            xy=(row['ProcessImageEntropy'], row['SensitiveKeysAccessed']),
+                            xytext=(10, 10), 
+                            textcoords='offset points',
+                            bbox=dict(boxstyle='round,pad=0.5', fc='red', alpha=0.7, color='white'),
+                            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+        
+        # Add threshold lines
+        ax4.axvline(x=self.thresholds['entropy_high'], color='red', linestyle='--', alpha=0.7, lw=2)
+        ax4.axhline(y=self.thresholds['sensitive_keys_high'], color='red', linestyle='--', alpha=0.7, lw=2)
+        
+        # Set axis limits
+        ax4.set_xlim(250, 350)
+        ax4.set_ylim(1, data['SensitiveKeysAccessed'].max() * 1.1)
+        
+        ax4.set_xlabel('Process Image Entropy', fontsize=12)
+        ax4.set_ylabel('Sensitive Keys Accessed', fontsize=12)
+        ax4.set_yscale('log')
+        ax4.set_title('Three Dimensions of Detection (Color = Registry Entropy)', fontsize=14)
+        ax4.legend()
+        ax4.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig('three_dimension_detection.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print("Generated visualization files:")
+        print("1. cluster_vs_rules_comparison.png - Side by side comparison")
+        print("2. rule_based_detection_detail.png - Detailed view of rule detections")
+        print("3. three_dimension_detection.png - Shows registry entropy as color")
     def _create_detailed_analysis(self, data, classifications):
         """Create additional detailed analysis plots"""
         
@@ -482,7 +705,7 @@ class OptimalClustersAnalyzer:
         self._mark_elbow_point(ax, elbow_data['k_values'], elbow_data['scores'])
         
         # Add annotation explaining the choice
-        ax.text(0.05, 0.95, f'Optimal k = 3\n(benign, suspicious, malware)', 
+        ax.text(0.05, 0.95, f'K = {elbow_data["k_values"]}', 
                 transform=ax.transAxes, fontsize=12, 
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.5))
         
@@ -753,6 +976,7 @@ def main():
         # Visualize results
         print("\nGenerating visualizations...")
         detector.visualize_results(data, features, classifications)
+        detector.visualize_cluster_vs_rules(data, classifications)
         
         # Save results
         output_file = 'combined_malware_detection_output.csv'

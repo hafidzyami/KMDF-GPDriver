@@ -420,7 +420,7 @@ class OptimalClustersAnalyzer:
         self._mark_elbow_point(ax, elbow_data['k_values'], elbow_data['scores'])
         
         # Add annotation explaining the choice
-        ax.text(0.05, 0.95, f'Optimal k = 3\n(benign, suspicious, malware)', 
+        ax.text(0.05, 0.95, f'K = {elbow_data['k_values']}\n', 
                 transform=ax.transAxes, fontsize=12, 
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.5))
         
