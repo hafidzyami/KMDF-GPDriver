@@ -1,0 +1,49 @@
+ProcessId,ProcessName,ProcessAgeSeconds,ProcessImageEntropy,SessionId,IsElevated,FirstSeenTime,LastSeenTime,OperationDurationSec,ProcessCreateTime,TotalOperationCount,CreateOperationCount,ModifyOperationCount,DeleteOperationCount,QueryOperationCount,UniqueKeysAccessed,AutorunKeysAccessed,SecurityKeysAccessed,FileAssocKeysAccessed,NetworkingKeysAccessed,ServicesKeysAccessed,SensitiveKeysAccessed,ProcessHijackKeysAccessed,DllHijackKeysAccessed,ComObjectKeysAccessed,OperationBurstCount,MaxOperationsPerBurst,BurstIntervalMs,OperationDensityPerMin,TimingVariance,RemoteOperationCount,FileExtensionModificationCount,SecuritySettingModificationCount,WritesToReadsRatio,RegistryKeyDepthMax,RegistryValueEntropyAvg,ComRegistryModifications,CriticalSystemKeyModifications
+868,\Device\HarddiskVolume3\Windows\System32\services.exe,29,258,0,1,1746196454,1746196484,30,1746196454,165,0,0,0,165,165,0,0,0,0,0,0,12,0,0,1,2036,4294958424,206,0,0,0,0,0,9,0,0,0
+1664,\Device\HarddiskVolume3\Windows\System32\Taskmgr.exe,31,290,0,1,1746196454,1746196485,31,1746196454,4893,0,0,0,4893,4893,0,0,446,0,0,0,0,0,0,0,0,0,9290,0,0,0,0,0,12,0,0,0
+4828,\Device\HarddiskVolume3\Windows\explorer.exe,30,250,0,1,1746196454,1746196485,30,1746196454,3156,72,33,0,3051,3108,0,0,1500,0,0,0,0,0,0,0,0,0,6200,0,0,0,0,2,13,173,0,0
+888,\Device\HarddiskVolume3\Windows\System32\lsass.exe,0,255,0,1,1746196454,1746196484,30,1746196454,14,0,0,0,14,14,0,0,0,0,0,11,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+1524,\Device\HarddiskVolume3\Windows\System32\VBoxService.exe,0,266,0,1,1746196454,1746196484,30,1746196454,21,0,0,0,21,21,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+3440,\Device\HarddiskVolume3\Users\wineleven\Desktop\NativeExamples.exe,0,316,0,1,1746196455,1746196455,0,1746196455,639,2,0,0,637,639,0,0,509,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,7,0,0,0
+3120,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196455,1746196460,5,1746196455,2068,639,0,0,1429,2068,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,44,6,0,0,0
+2252,\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.22.11141.0_x64__8wekyb3d8bbwe\WindowsTerminal.exe,0,323,0,1,1746196456,1746196482,26,1746196456,32,0,0,0,32,32,0,0,0,0,0,0,0,0,0,1,33640,0,0,0,0,0,0,0,9,0,0,0
+2476,\Device\HarddiskVolume3\Windows\System32\ctfmon.exe,26,290,0,1,1746196456,1746196482,26,1746196456,7508,10,10,0,7488,7508,0,0,0,0,0,0,0,0,0,0,0,0,17307,0,0,0,0,0,9,474,0,0
+3216,\Device\HarddiskVolume3\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\StartMenuExperienceHost.exe,0,311,0,1,1746196456,1746196456,0,1746196456,46,0,0,0,46,46,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0
+724,\Device\HarddiskVolume3\Windows\System32\csrss.exe,29,255,0,1,1746196456,1746196485,29,1746196456,536,0,0,0,536,536,0,0,0,0,0,0,0,0,0,0,0,0,1034,0,0,0,0,0,11,0,0,0
+5436,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196456,1746196461,5,1746196456,67,1,3,0,63,67,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,256,0,0
+3020,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,24,254,0,1,1746196456,1746196480,24,1746196456,10518,87,52,1,10378,10502,0,0,2356,0,0,316,2,0,20,0,0,0,26250,0,0,0,0,1,15,239,0,0
+3764,\Device\HarddiskVolume3\Windows\System32\taskhostw.exe,24,276,0,1,1746196456,1746196480,24,1746196456,151,0,0,0,151,151,0,0,0,0,0,0,0,0,0,1,1152,4294952200,250,0,0,0,0,0,12,0,0,0
+4,,0,0,0,1,1746196456,1746196461,5,1746196456,20,5,10,0,5,20,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,177,0,0
+1020,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196456,1746196462,5,1746196456,41,0,0,0,41,41,0,0,0,0,0,26,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+2272,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196456,1746196481,24,1746196456,77,6,2,0,69,77,0,0,0,0,0,0,0,0,0,1,1384,4294943421,0,0,0,0,0,0,7,125,0,0
+2024,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196457,1746196458,0,1746196457,57,4,0,0,53,53,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+636,\Device\HarddiskVolume3\Windows\System32\svchost.exe,21,281,0,1,1746196461,1746196482,21,1746196461,626,0,0,0,626,626,0,0,426,0,0,0,0,0,12,0,0,0,1714,0,0,0,0,0,12,0,0,0
+2080,\Device\HarddiskVolume3\Windows\System32\svchost.exe,17,281,0,1,1746196461,1746196478,17,1746196461,539,4,0,0,535,537,0,0,0,0,0,0,0,0,0,0,0,0,1764,0,0,0,0,0,9,0,0,0
+1884,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,8,254,0,1,1746196462,1746196480,18,1746196462,1416,4,1,0,1411,1412,0,0,249,0,0,0,0,0,6,1,59,4294956974,10500,0,0,0,0,0,10,250,0,0
+800,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196462,1746196480,18,1746196462,1020,8,1,0,1011,1016,0,0,0,0,0,0,0,0,3,1,1174,4294949418,0,0,0,0,0,0,10,250,0,0
+1392,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196462,1746196462,0,1746196462,72,0,0,0,72,72,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,0,0,0
+2456,\Device\HarddiskVolume3\Windows\System32\svchost.exe,17,281,0,1,1746196462,1746196480,17,1746196462,2011,100,0,0,1911,2011,0,0,0,0,0,0,0,0,0,0,0,0,7058,0,0,0,0,5,9,0,0,0
+1464,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196463,1746196478,15,1746196463,249,0,1,0,248,249,0,0,0,0,0,0,0,0,4,1,320,4294952886,0,0,0,0,0,0,10,250,0,0
+3584,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196463,1746196480,16,1746196463,1312,4,1,0,1307,1308,0,0,249,0,0,0,0,0,6,1,649,4294950717,0,0,0,0,0,0,10,250,0,0
+956,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196464,1746196478,13,1746196464,249,0,1,0,248,249,0,0,0,0,0,0,0,0,4,1,1030,4294954074,0,0,0,0,0,0,10,250,0,0
+3876,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196466,1746196466,0,1746196466,5,0,0,0,5,5,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,9,0,0,0
+5964,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196466,1746196478,11,1746196466,250,0,1,0,249,250,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,10,250,0,0
+1876,\Device\HarddiskVolume3\Windows\System32\svchost.exe,1,281,0,1,1746196469,1746196470,1,1746196469,176,2,2,0,172,176,0,0,0,0,0,0,0,0,0,0,0,0,6000,0,0,0,0,4,11,425,0,0
+652,\Device\HarddiskVolume3\Windows\System32\csrss.exe,0,255,0,1,1746196469,1746196485,15,1746196469,87,0,0,0,87,87,0,0,0,0,0,0,0,0,0,1,88,4294953084,0,0,0,0,0,0,11,0,0,0
+5952,\Device\HarddiskVolume3\Windows\System32\taskhostw.exe,0,276,0,1,1746196469,1746196470,0,1746196469,123,1,3,0,119,123,0,0,29,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,9,457,0,0
+1860,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196470,1746196470,0,1746196470,52,0,0,0,52,52,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0
+5504,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196471,1746196480,9,1746196471,209,0,1,0,208,209,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,10,250,0,0
+2120,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196471,1746196476,5,1746196471,250,0,1,0,249,250,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,10,241,0,0
+5600,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196471,1746196478,7,1746196471,249,0,1,0,248,249,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,10,250,0,0
+1236,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196471,1746196478,7,1746196471,249,0,1,0,248,249,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,10,250,0,0
+7272,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe,0,254,0,1,1746196473,1746196478,5,1746196473,249,0,1,0,248,249,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,10,250,0,0
+7416,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\pingsender.exe,0,264,0,1,1746196480,1746196480,0,1746196480,1288,36,11,0,1241,1281,0,0,0,0,0,64,0,0,3,0,0,0,0,0,0,0,0,4,11,119,0,0
+7428,\Device\HarddiskVolume3\Windows\System32\conhost.exe,0,281,0,1,1746196480,1746196480,0,1746196480,152,0,0,0,152,152,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,0,0,0
+7440,\Device\HarddiskVolume3\Program Files\Mozilla Firefox\pingsender.exe,0,264,0,1,1746196480,1746196480,0,1746196480,1288,36,11,0,1241,1281,0,0,0,0,0,64,0,0,3,0,0,0,0,0,0,0,0,4,11,119,0,0
+7472,\Device\HarddiskVolume3\Windows\System32\conhost.exe,0,281,0,1,1746196480,1746196480,0,1746196480,152,0,0,0,152,152,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,0,0,0
+1280,\Device\HarddiskVolume3\Windows\System32\cmd.exe,0,235,0,1,1746196481,1746196481,0,1746196481,40,0,0,0,40,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+5156,\Device\HarddiskVolume3\Windows\System32\SearchIndexer.exe,0,294,0,1,1746196482,1746196484,1,1746196482,15,0,0,0,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+7588,\Device\HarddiskVolume3\Windows\System32\SearchProtocolHost.exe,0,304,0,1,1746196484,1746196485,0,1746196484,1082,2,0,0,1080,1081,0,0,433,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,12,0,0,0
+7612,\Device\HarddiskVolume3\Windows\System32\svchost.exe,1,281,0,1,1746196484,1746196485,1,1746196484,779,105,0,0,674,779,0,0,0,0,0,0,27,0,3,0,0,0,42000,0,0,0,0,13,10,0,0,0
+7580,\Device\HarddiskVolume3\Users\wineleven\AppData\Local\Programs\Python\Python313\python.exe,0,290,0,1,1746196484,1746196485,1,1746196484,53,0,0,0,53,53,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,8,0,0,0
+7724,\Device\HarddiskVolume3\Windows\System32\WerFault.exe,0,275,0,1,1746196485,1746196485,0,1746196485,494,70,0,0,424,494,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,12,10,0,0,0

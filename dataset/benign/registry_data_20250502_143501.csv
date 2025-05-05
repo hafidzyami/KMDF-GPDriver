@@ -1,0 +1,82 @@
+ProcessId,ProcessName,ProcessAgeSeconds,ProcessImageEntropy,SessionId,IsElevated,FirstSeenTime,LastSeenTime,OperationDurationSec,ProcessCreateTime,TotalOperationCount,CreateOperationCount,ModifyOperationCount,DeleteOperationCount,QueryOperationCount,UniqueKeysAccessed,AutorunKeysAccessed,SecurityKeysAccessed,FileAssocKeysAccessed,NetworkingKeysAccessed,ServicesKeysAccessed,SensitiveKeysAccessed,ProcessHijackKeysAccessed,DllHijackKeysAccessed,ComObjectKeysAccessed,OperationBurstCount,MaxOperationsPerBurst,BurstIntervalMs,OperationDensityPerMin,TimingVariance,RemoteOperationCount,FileExtensionModificationCount,SecuritySettingModificationCount,WritesToReadsRatio,RegistryKeyDepthMax,RegistryValueEntropyAvg,ComRegistryModifications,CriticalSystemKeyModifications
+868,\Device\HarddiskVolume3\Windows\System32\services.exe,41,258,0,1,1746196458,1746196500,42,1746196458,674,0,0,0,674,674,0,0,0,0,0,0,24,0,0,1,632,4294957239,878,0,0,0,0,0,9,0,0,0
+1664,\Device\HarddiskVolume3\Windows\System32\Taskmgr.exe,42,290,0,1,1746196458,1746196500,42,1746196458,7487,2,0,0,7485,7486,0,0,1034,0,0,0,0,0,0,0,0,0,10571,0,0,0,0,0,12,0,0,0
+4828,\Device\HarddiskVolume3\Windows\explorer.exe,41,250,0,1,1746196458,1746196500,42,1746196458,40779,710,109,2,39958,40298,0,0,9247,0,0,0,0,0,0,0,0,0,59560,0,0,0,0,2,13,335,0,0
+5424,\Device\HarddiskVolume3\Users\wineleven\Desktop\NativeExamples.exe,0,316,0,1,1746196459,1746196459,0,1746196459,639,2,0,0,637,639,0,0,509,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,7,0,0,0
+3120,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196459,1746196489,30,1746196459,2069,639,0,0,1430,2069,0,0,0,0,0,0,0,0,0,1,4195,4294940488,0,0,0,0,0,44,6,0,0,0
+888,\Device\HarddiskVolume3\Windows\System32\lsass.exe,26,255,0,1,1746196459,1746196500,40,1746196459,495,20,8,0,467,487,0,0,0,0,0,296,0,0,0,0,0,0,923,0,0,0,0,1,10,106,0,0
+1524,\Device\HarddiskVolume3\Windows\System32\VBoxService.exe,0,266,0,1,1746196459,1746196499,40,1746196459,27,0,0,0,27,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+3216,\Device\HarddiskVolume3\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\StartMenuExperienceHost.exe,3,311,0,1,1746196460,1746196463,3,1746196460,1755,8,4,0,1743,1751,0,0,206,0,0,0,0,0,0,0,0,0,34000,0,0,0,0,0,13,427,0,0
+992,\Device\HarddiskVolume3\Windows\System32\sihost.exe,26,280,0,1,1746196460,1746196496,36,1746196460,2583,30,0,0,2553,2583,0,0,862,0,0,0,0,0,0,0,0,0,5769,0,0,0,0,1,13,0,0,0
+1020,\Device\HarddiskVolume3\Windows\System32\svchost.exe,36,281,0,1,1746196460,1746196496,36,1746196460,1435,98,30,3,1304,1419,0,0,68,0,0,39,0,0,2,1,39,4294951984,2333,0,0,0,0,10,16,256,0,0
+2252,\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.22.11141.0_x64__8wekyb3d8bbwe\WindowsTerminal.exe,40,323,0,1,1746196460,1746196501,40,1746196460,402,0,0,0,402,402,0,0,112,0,0,0,0,0,0,1,7996,4294935181,600,0,0,0,0,0,12,0,0,0
+3256,\Device\HarddiskVolume3\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\SearchHost.exe,31,289,0,1,1746196460,1746196492,31,1746196460,1028,35,5,2,986,996,0,0,37,0,0,0,0,0,0,1,224,4294939562,1935,0,0,0,0,4,13,309,0,0
+2476,\Device\HarddiskVolume3\Windows\System32\ctfmon.exe,39,290,0,1,1746196460,1746196500,39,1746196460,21313,18,18,0,21277,21313,0,0,748,0,0,0,0,0,0,0,0,0,32769,0,0,0,0,0,9,474,0,0
+1804,\Device\HarddiskVolume3\Windows\System32\svchost.exe,25,281,0,1,1746196460,1746196494,34,1746196460,177,0,0,0,177,177,0,0,12,0,0,0,0,0,0,1,786,4294956099,240,0,0,0,0,0,7,0,0,0
+4400,\Device\HarddiskVolume3\Windows\System32\svchost.exe,34,281,0,1,1746196460,1746196494,34,1746196460,648,0,0,0,648,648,0,0,39,0,0,0,0,0,0,1,514,4294956037,1058,0,0,0,0,0,13,0,0,0
+1300,\Device\HarddiskVolume3\Windows\System32\dwm.exe,0,235,0,1,1746196460,1746196494,34,1746196460,15,0,0,0,15,15,0,0,0,0,0,0,0,0,0,1,158,4294933316,0,0,0,0,0,0,7,0,0,0
+636,\Device\HarddiskVolume3\Windows\System32\svchost.exe,40,281,0,1,1746196460,1746196501,40,1746196460,2826,6,0,0,2820,2826,0,0,2029,0,0,0,0,0,62,0,0,0,4200,0,0,0,0,0,12,0,0,0
+4136,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196460,1746196460,0,1746196460,67,0,0,0,67,67,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,0,0,0
+724,\Device\HarddiskVolume3\Windows\System32\csrss.exe,39,255,0,1,1746196461,1746196501,39,1746196461,755,0,0,0,755,755,0,0,0,0,0,0,0,0,0,0,0,0,1076,0,0,0,0,0,11,0,0,0
+3340,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196461,1746196462,0,1746196461,23,1,1,1,20,23,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,278,0,0
+652,\Device\HarddiskVolume3\Windows\System32\csrss.exe,37,255,0,1,1746196462,1746196499,37,1746196462,203,0,0,0,203,203,0,0,0,0,0,0,0,0,0,2,5023,1073733166,324,0,0,0,0,0,11,0,0,0
+7172,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,32,260,0,1,1746196462,1746196497,35,1746196462,16295,284,110,4,15897,16217,0,1,5967,0,0,73,0,0,24,0,0,0,30375,0,0,0,0,2,15,295,0,0
+3764,\Device\HarddiskVolume3\Windows\System32\taskhostw.exe,32,276,0,1,1746196462,1746196499,37,1746196462,198,0,0,0,198,198,0,0,0,0,0,0,0,0,0,1,1291,4294949696,187,0,0,0,0,0,9,0,0,0
+2272,\Device\HarddiskVolume3\Windows\System32\svchost.exe,34,281,0,1,1746196463,1746196500,37,1746196463,5562,45,11,0,5506,5562,0,0,26,0,0,0,0,0,0,1,397,4294949600,9705,0,0,0,0,0,8,125,0,0
+4384,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196463,1746196468,5,1746196463,144,25,6,0,113,119,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,42,10,147,0,0
+7208,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196463,1746196497,33,1746196463,67,0,1,0,66,67,0,0,0,0,0,0,0,0,3,1,189,4294933723,0,0,0,0,0,0,9,250,0,0
+5156,\Device\HarddiskVolume3\Windows\System32\SearchIndexer.exe,0,294,0,1,1746196463,1746196486,23,1746196463,13,0,0,0,13,13,0,0,8,0,0,0,0,0,0,1,4702,4294944732,0,0,0,0,0,0,6,0,0,0
+1456,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196464,1746196500,36,1746196464,53,0,0,0,53,53,0,0,46,0,0,0,0,0,0,2,85410,4294953385,0,0,0,0,0,0,7,0,0,0
+2080,\Device\HarddiskVolume3\Windows\System32\svchost.exe,27,281,0,1,1746196464,1746196492,27,1746196464,1661,4,0,0,1657,1659,0,0,0,0,0,0,0,0,0,0,0,0,3555,0,0,0,0,0,9,0,0,0
+7416,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,2,260,0,1,1746196464,1746196496,32,1746196464,551,1,1,0,549,550,0,0,0,0,0,0,0,0,5,0,0,0,15000,0,0,0,0,0,13,250,0,0
+7428,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,5,260,0,1,1746196464,1746196496,32,1746196464,874,36,1,0,837,846,0,0,224,0,0,0,0,0,8,0,0,0,9600,0,0,0,0,4,10,250,0,0
+7440,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\135.0.3179.98\elevation_service.exe,2,297,0,1,1746196464,1746196467,2,1746196464,163,0,0,0,163,163,0,0,53,0,0,0,0,0,6,0,0,0,3000,0,0,0,0,0,9,0,0,0
+7468,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196466,1746196496,30,1746196466,58,1,1,0,56,57,0,0,0,0,0,0,0,0,3,1,163,4294937069,0,0,0,0,0,0,9,250,0,0
+7752,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196466,1746196471,4,1746196466,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+7744,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196467,1746196467,0,1746196467,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+4,,0,0,0,1,1746196467,1746196469,2,1746196467,12,2,4,4,2,12,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,200,0,0
+7988,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196467,1746196485,18,1746196467,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,1,1842,4294950037,0,0,0,0,0,0,9,250,0,0
+7980,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196467,1746196477,10,1746196467,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+3296,\Device\HarddiskVolume3\Windows\System32\backgroundTaskHost.exe,0,327,0,1,1746196467,1746196467,0,1746196467,195,10,0,0,185,195,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,9,0,0,0
+2812,\Device\HarddiskVolume3\Windows\System32\svchost.exe,19,281,0,1,1746196467,1746196487,19,1746196467,201,0,0,0,201,201,0,0,36,0,0,0,0,0,0,1,104,4294955128,631,0,0,0,0,0,7,0,0,0
+8064,\Device\HarddiskVolume3\Windows\System32\backgroundTaskHost.exe,1,327,0,1,1746196467,1746196468,1,1746196467,1411,17,0,0,1394,1409,0,0,427,0,0,0,0,0,9,0,0,0,84000,0,0,0,0,1,12,0,0,0
+5568,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\EdgeWebView\Application\135.0.3179.98\msedgewebview2.exe,0,294,0,1,1746196467,1746196486,18,1746196467,143,0,0,0,143,143,0,0,61,0,0,0,0,0,0,1,1572,4294949214,0,0,0,0,0,0,12,0,0,0
+4468,\Device\HarddiskVolume3\Windows\System32\dllhost.exe,31,281,0,1,1746196468,1746196499,31,1746196468,111,0,0,0,111,111,0,0,102,0,0,0,0,0,0,1,5304,4294936529,193,0,0,0,0,0,7,0,0,0
+8140,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196468,1746196477,8,1746196468,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+7156,\Device\HarddiskVolume3\Windows\System32\RuntimeBroker.exe,0,320,0,1,1746196468,1746196468,0,1746196468,53,0,0,0,53,53,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+1876,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196469,1746196470,1,1746196469,78,2,2,0,74,78,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,427,0,0
+7444,\Device\HarddiskVolume3\Windows\System32\taskhostw.exe,0,276,0,1,1746196469,1746196470,0,1746196469,123,1,3,0,119,123,0,0,29,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,9,457,0,0
+8068,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196470,1746196470,0,1746196470,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+8204,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196470,1746196470,0,1746196470,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+8212,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196470,1746196494,24,1746196470,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,1,67,4294943240,0,0,0,0,0,0,9,250,0,0
+8408,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196471,1746196475,3,1746196471,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+8496,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196472,1746196496,23,1746196472,59,1,1,0,57,58,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+8488,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196472,1746196496,23,1746196472,58,1,1,0,56,57,0,0,0,0,0,0,0,0,3,1,705,4294945368,0,0,0,0,0,0,9,250,0,0
+1444,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196473,1746196476,3,1746196473,195,0,0,0,195,195,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0
+2744,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196473,1746196474,0,1746196473,52,0,0,0,52,52,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+8668,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196475,1746196475,0,1746196475,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+8692,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196475,1746196485,9,1746196475,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+8616,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\135.0.3179.98\identity_helper.exe,10,300,0,1,1746196476,1746196496,20,1746196476,3842,8,0,0,3834,3842,0,0,2113,0,0,0,0,0,9,0,0,0,22800,0,0,0,0,0,13,0,0,0
+1400,\Device\HarddiskVolume3\Windows\System32\svchost.exe,9,281,0,1,1746196477,1746196486,9,1746196477,424,0,0,0,424,424,0,0,306,0,0,0,0,0,0,0,0,0,2666,0,0,0,0,0,7,0,0,0
+2088,\Device\HarddiskVolume3\Windows\System32\svchost.exe,3,281,0,1,1746196477,1746196480,3,1746196477,204,0,2,0,202,204,0,0,41,0,0,0,0,0,2,0,0,0,4000,0,0,0,0,0,9,272,0,0
+2264,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196477,1746196500,22,1746196477,23,1,1,0,21,23,0,0,8,0,0,0,0,0,0,1,279,4294944583,0,0,0,0,0,0,7,300,0,0
+8976,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196485,1746196488,2,1746196485,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+9008,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196485,1746196494,9,1746196485,62,1,1,0,60,61,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+9088,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196485,1746196486,0,1746196485,2364,72,11,2,2279,2326,0,0,517,0,0,58,34,0,7,0,0,0,0,0,0,0,0,3,12,278,0,0
+3876,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196485,1746196497,11,1746196485,11,1,4,0,6,11,0,0,7,0,0,0,0,0,0,1,100,4294956305,0,0,0,4,0,0,15,185,0,0
+4612,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196486,1746196486,0,1746196486,10,0,0,0,10,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+1408,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196486,1746196486,0,1746196486,10,0,0,0,10,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+2024,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196487,1746196488,0,1746196487,94,4,0,0,90,90,0,0,21,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+5804,\Device\HarddiskVolume3\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\TextInputHost.exe,0,308,0,1,1746196488,1746196497,8,1746196488,92,0,0,0,92,92,0,0,12,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0
+1556,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196492,1746196500,8,1746196492,29,0,0,0,29,29,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+8624,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196494,1746196494,0,1746196494,248,5,1,0,242,243,0,0,83,0,0,0,0,0,5,0,0,0,0,0,0,0,0,2,9,250,0,0
+8560,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196494,1746196494,0,1746196494,248,5,1,0,242,243,0,0,83,0,0,0,0,0,5,0,0,0,0,0,0,0,0,2,9,250,0,0
+8852,\Device\HarddiskVolume3\Program Files (x86)\Microsoft\Edge\Application\msedge.exe,0,260,0,1,1746196494,1746196495,0,1746196494,76,5,1,0,70,71,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,250,0,0
+2456,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196496,1746196496,0,1746196496,13,0,0,0,13,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+1884,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1746196496,1746196496,0,1746196496,12,2,1,0,9,12,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+5200,\Device\HarddiskVolume3\Windows\System32\svchost.exe,1,281,0,1,1746196498,1746196500,1,1746196498,1501,210,0,0,1291,1501,0,0,0,0,0,0,27,0,3,0,0,0,90000,0,0,0,0,16,10,0,0,0
+5316,\Device\HarddiskVolume3\Windows\System32\WerFault.exe,0,275,0,1,1746196499,1746196499,0,1746196499,494,70,0,0,424,494,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,12,10,0,0,0
+7088,\Device\HarddiskVolume3\Windows\System32\WerFault.exe,1,275,0,1,1746196499,1746196501,1,1746196499,33580,758,3,0,32819,33576,0,0,886,0,0,36,0,0,31,0,0,0,2010000,0,0,0,0,2,10,125,0,0
+3016,\Device\HarddiskVolume3\Windows\UUS\Packages\Preview\amd64\MoUsoCoreWorker.exe,0,292,0,1,1746196500,1746196500,0,1746196500,13,2,2,0,9,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+1280,\Device\HarddiskVolume3\Windows\System32\cmd.exe,0,235,0,1,1746196501,1746196501,0,1746196501,40,0,0,0,40,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+5476,\Device\HarddiskVolume3\Users\wineleven\AppData\Local\Programs\Python\Python313\python.exe,0,290,0,1,1746196501,1746196501,0,1746196501,53,0,0,0,53,53,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,8,0,0,0
