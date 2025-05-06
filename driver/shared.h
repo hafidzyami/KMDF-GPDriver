@@ -157,13 +157,16 @@ typedef struct ListFiltersRequest
 	FILTER_INFO Filters[10];		// You can request more than 10 filters via multiple requests.
 } LIST_FILTERS_REQUEST, *PLIST_FILTERS_REQUEST;
 
+#ifndef ALERT_TYPE_DEFINED
+#define ALERT_TYPE_DEFINED
 typedef enum AlertType
 {
-	StackViolation,
-	FilterViolation,
-	ParentProcessIdSpoofing,
-	RemoteThreadCreation
+	AlertTypeStackViolation = 0,     // Renamed from StackViolation for consistency
+	AlertTypeFilterViolation,         // Renamed from FilterViolation
+	AlertTypeRemoteThreadCreation,    // Reordered to match IOCTLShared.h
+	AlertTypeParentProcessIdSpoofing  // Reordered to match IOCTLShared.h
 } ALERT_TYPE;
+#endif // ALERT_TYPE_DEFINED
 
 typedef enum DetectionSource
 {

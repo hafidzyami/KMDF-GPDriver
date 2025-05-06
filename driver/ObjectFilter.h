@@ -90,6 +90,11 @@ public:
     {
         return registryAnalyzer;
     }
+    
+    // Check if a process is protected
+    BOOLEAN IsProcessProtected(HANDLE ProcessId) {
+        return (ProcessId == ProtectedProcessId);
+    }
 };
 
 // Type definitions for easier usage

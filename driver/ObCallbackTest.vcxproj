@@ -207,6 +207,11 @@
       <PreCompiledHeader>Use</PreCompiledHeader>
       <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
     </ClCompile>
+    <ClCompile Include="IOCTLHandlers.cpp">
+      <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>
+      <PreCompiledHeader>Use</PreCompiledHeader>
+      <PreCompiledHeaderOutputFile>$(IntDir)\pch.h.pch</PreCompiledHeaderOutputFile>
+    </ClCompile>
     <!-- PeaceMaker Components -->
     <ClCompile Include="common.cpp">
       <PreCompiledHeaderFile>pch.h</PreCompiledHeaderFile>

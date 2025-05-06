@@ -114,60 +114,13 @@ CreateCloseDispatch(
 
 /**
  * DeviceControl dispatch routine - handle IRP_MJ_DEVICE_CONTROL
+ * Deklarasi sebagai extern untuk menghindari konflik dengan implementasi di IOCTLHandlers.cpp
  */
-NTSTATUS
+extern NTSTATUS
 DeviceControlDispatch(
     _In_ PDEVICE_OBJECT DeviceObject,
     _Inout_ PIRP Irp
-)
-{
-    UNREFERENCED_PARAMETER(DeviceObject);
-
-    NTSTATUS status = STATUS_SUCCESS;
-    PIO_STACK_LOCATION irpSp = IoGetCurrentIrpStackLocation(Irp);
-    ULONG ioControlCode = irpSp->Parameters.DeviceIoControl.IoControlCode;
-    //ULONG inputBufferLength = irpSp->Parameters.DeviceIoControl.InputBufferLength;
-    ULONG outputBufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
-    PVOID ioBuffer = Irp->AssociatedIrp.SystemBuffer;
-    ULONG bytesReturned = 0;
-
-    switch (ioControlCode) {
-    case IOCTL_EXPORT_REGISTRY_FEATURES_CSV:
-        {
-            // Use RegistryAnalyzer to generate CSV data
-            if (TDriverClass::GetObjectMonitor() && TDriverClass::GetObjectMonitor()->GetRegistryAnalyzer()) {
-                status = TDriverClass::GetObjectMonitor()->GetRegistryAnalyzer()->ExportFeatureVectorsToCSVBuffer(
-                    (PUCHAR)ioBuffer,
-                    outputBufferLength,
-                    &bytesReturned
-                );
-
-                if (status == STATUS_BUFFER_TOO_SMALL) {
-                    DbgPrint("[DRIVER] Buffer too small for CSV export. Required size: %lu\n", bytesReturned);
-                } else if (NT_SUCCESS(status)) {
-                    DbgPrint("[DRIVER] Successfully exported CSV data. Size: %lu bytes\n", bytesReturned);
-                } else {
-                    DbgPrint("[DRIVER] Failed to export CSV data. Status: 0x%08X\n", status);
-                }
-            } else {
-                status = STATUS_UNSUCCESSFUL;
-                DbgPrint("[DRIVER] Registry analyzer not initialized\n");
-            }
-        }
-        break;
-
-    default:
-        status = STATUS_INVALID_DEVICE_REQUEST;
-        DbgPrint("[DRIVER] Unknown IOCTL code: 0x%08X\n", ioControlCode);
-        break;
-    }
-
-    Irp->IoStatus.Status = status;
-    Irp->IoStatus.Information = bytesReturned;
-
-    IoCompleteRequest(Irp, IO_NO_INCREMENT);
-    return status;
-}
+);
 
 NTSTATUS
 DriverEntry(
@@ -178,6 +131,18 @@ DriverEntry(
     UNICODE_STRING deviceName;
     UNICODE_STRING dosDeviceName;
     PDEVICE_OBJECT deviceObject = NULL;
+
+    // Initialize driver start time for uptime calculation
+    KeQuerySystemTime(&TDriverClass::DriverStartTime);
+    
+    // Initialize statistics counters
+    TDriverClass::TotalProcessesMonitored = 0;
+    TDriverClass::ActiveProcesses = 0;
+    TDriverClass::RegistryOperationsBlocked = 0;
+    TDriverClass::ThreadsMonitored = 0;
+    TDriverClass::RemoteThreadsDetected = 0;
+    TDriverClass::ImagesMonitored = 0;
+    TDriverClass::RemoteImagesDetected = 0;
 
     // Create device object for IOCTL communication
     RtlInitUnicodeString(&deviceName, L"\\Device\\RegistryAnalyzer");

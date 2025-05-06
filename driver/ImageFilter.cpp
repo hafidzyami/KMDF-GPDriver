@@ -208,6 +208,25 @@ ImageFilter::~ImageFilter (
 	@param ProcessId - The process ID of the process to add.
 	@param CreateInfo - Information about the process being created.
 */
+/*
+typedef struct _PS_CREATE_NOTIFY_INFO {
+	_In_ SIZE_T Size;
+	union {
+		_In_ ULONG Flags;
+		struct {
+			_In_ ULONG FileOpenNameAvailable : 1;
+			_In_ ULONG IsSubsystemProcess : 1;
+			_In_ ULONG Reserved : 30;
+		};
+	};
+	_In_ HANDLE ParentProcessId;
+	_In_ CLIENT_ID CreatingThreadId;
+	_Inout_ struct _FILE_OBJECT *FileObject;
+	_In_ PCUNICODE_STRING ImageFileName;
+	_In_opt_ PCUNICODE_STRING CommandLine;
+	_Inout_ NTSTATUS CreationStatus;
+} PS_CREATE_NOTIFY_INFO, *PPS_CREATE_NOTIFY_INFO;
+*/
 VOID
 ImageFilter::AddProcessToHistory (
 	_In_ HANDLE ProcessId,
@@ -421,6 +440,26 @@ ImageFilter::TerminateProcessInHistory (
 	@param ProcessId - The new child's process ID.
 	@param CreateInfo - Information about the process being created.
 */
+
+/*
+typedef struct _PS_CREATE_NOTIFY_INFO {
+	_In_ SIZE_T Size;
+	union {
+		_In_ ULONG Flags;
+		struct {
+			_In_ ULONG FileOpenNameAvailable : 1;
+			_In_ ULONG IsSubsystemProcess : 1;
+			_In_ ULONG Reserved : 30;
+		};
+	};
+	_In_ HANDLE ParentProcessId;
+	_In_ CLIENT_ID CreatingThreadId;
+	_Inout_ struct _FILE_OBJECT *FileObject;
+	_In_ PCUNICODE_STRING ImageFileName;
+	_In_opt_ PCUNICODE_STRING CommandLine;
+	_Inout_ NTSTATUS CreationStatus;
+} PS_CREATE_NOTIFY_INFO, *PPS_CREATE_NOTIFY_INFO;
+*/
 VOID
 ImageFilter::CreateProcessNotifyRoutine (
 	_In_ PEPROCESS Process,
@@ -451,6 +490,19 @@ ImageFilter::CreateProcessNotifyRoutine (
 	Retrieve the full image file name for a process.
 	@param ProcessId - The process to get the name of.
 	@param ProcessImageFileName - PUNICODE_STRING to fill with the image file name of the process.
+*/
+
+/*
+typedef struct _UNICODE_STRING {
+	USHORT Length;
+	USHORT MaximumLength;
+#ifdef MIDL_PASS
+	[size_is(MaximumLength / 2), length_is((Length) / 2) ] USHORT * Buffer;
+#else // MIDL_PASS
+	_Field_size_bytes_part_opt_(MaximumLength, Length) PWCH   Buffer;
+#endif // MIDL_PASS
+} UNICODE_STRING;
+typedef UNICODE_STRING *PUNICODE_STRING;
 */
 BOOLEAN
 ImageFilter::GetProcessImageFileName (
@@ -534,6 +586,29 @@ Exit:
 	@param FullImageName - A PUNICODE_STRING that identifies the executable image file. Might be NULL.
 	@param ProcessId - The process ID where this image is being mapped.
 	@param ImageInfo - Structure containing a variety of properties about the image being loaded.
+*/
+
+/*
+typedef struct _IMAGE_INFO {
+	union {
+		ULONG Properties;
+		struct {
+			ULONG ImageAddressingMode  : 8;  // Code addressing mode
+			ULONG SystemModeImage      : 1;  // System mode image
+			ULONG ImageMappedToAllPids : 1;  // Image mapped into all processes
+			ULONG ExtendedInfoPresent  : 1;  // IMAGE_INFO_EX available
+			ULONG MachineTypeMismatch  : 1;  // Architecture type mismatch
+			ULONG ImageSignatureLevel  : 4;  // Signature level
+			ULONG ImageSignatureType   : 3;  // Signature type
+			ULONG ImagePartialMap      : 1;  // Nonzero if entire image is not mapped
+			ULONG Reserved             : 12;
+		};
+	};
+	PVOID       ImageBase;
+	ULONG       ImageSelector;
+	SIZE_T      ImageSize;
+	ULONG       ImageSectionNumber;
+} IMAGE_INFO, *PIMAGE_INFO;
 */
 VOID
 ImageFilter::LoadImageNotifyRoutine(
@@ -698,6 +773,16 @@ Exit:
 	@param MaxProcessSumaries - Maximum number of process summaries that the array allows for.
 	@return The actual number of summaries returned.
 */
+
+/*
+typedef struct ProcessSummaryEntry
+{
+	HANDLE ProcessId;				// The process id of the executed process.
+	WCHAR ImageFileName[MAX_PATH];	// The image file name of the executed process.
+	ULONGLONG EpochExecutionTime;	// Process execution time in seconds since 1970.
+	BOOLEAN ProcessTerminated;		// Whether or not the process has terminated.
+} PROCESS_SUMMARY_ENTRY, * PPROCESS_SUMMARY_ENTRY;
+*/
 ULONG
 ImageFilter::GetProcessHistorySummary (
 	_In_ ULONG SkipCount,
@@ -771,6 +856,32 @@ ImageFilter::GetProcessHistorySummary (
 	Populate a request for detailed information on a process.
 	@param ProcessDetailedRequest - The request to populate.
 */
+
+/*
+typedef struct ProcessDetailedRequest
+{
+	HANDLE ProcessId;					// The process id of the executed process.
+	ULONGLONG EpochExecutionTime;		// Process execution time in seconds since 1970.
+	BOOLEAN Populated;					// Whether not this structure was populated (the process was found).
+
+	WCHAR ProcessPath[MAX_PATH];		// The image file name of the executed process.
+
+	HANDLE CallerProcessId;				// The process id of the caller process.
+	WCHAR CallerProcessPath[MAX_PATH];	// OPTIONAL: The image file name of the caller process.
+
+	HANDLE ParentProcessId;				// The process id of the alleged parent process.
+	WCHAR ParentProcessPath[MAX_PATH];	// OPTIONAL: The image file name of the alleged parent process.
+
+	WCHAR ProcessCommandLine[MAX_PATH]; // The process command line.
+
+	ULONG ImageSummarySize;				// The length of the ImageSummary array.
+	PIMAGE_SUMMARY ImageSummary;		// Variable-length array of image summaries.
+
+	ULONG StackHistorySize;				// The length of the StackHistory array.
+	PSTACK_RETURN_INFO StackHistory;	// Variable-length array of stack history.
+} PROCESS_DETAILED_REQUEST, *PPROCESS_DETAILED_REQUEST;
+*/
+
 VOID
 ImageFilter::PopulateProcessDetailedRequest (
 	_Inout_ PPROCESS_DETAILED_REQUEST ProcessDetailedRequest
@@ -1121,6 +1232,16 @@ ImageFilter::AddProcessThreadCount(
 	Populate a process sizes request.
 	@param ProcessSizesRequest - The request to populate.
 */
+/*
+typedef struct ProcessSizesRequest
+{
+	HANDLE ProcessId;					// The process id of the executed process.
+	ULONGLONG EpochExecutionTime;		// Process execution time in seconds since 1970.
+	ULONG ProcessSize;					// The number of loaded processes.
+	ULONG ImageSize;					// The number of loaded images in the process.
+	ULONG StackSize;					// The number of stack return entries in the stack history for the process.
+} PROCESS_SIZES_REQUEST, *PPROCESS_SIZES_REQUEST;
+*/
 VOID
 ImageFilter::PopulateProcessSizes (
 	_Inout_ PPROCESS_SIZES_REQUEST ProcessSizesRequest
@@ -1163,6 +1284,19 @@ ImageFilter::PopulateProcessSizes (
 /**
 	Populate an image detailed request.
 	@param ImageDetailedRequest - The request to populate.
+*/
+/*
+typedef struct ImageDetailedRequest
+{
+	HANDLE ProcessId;					// The process id of the executed process.
+	ULONGLONG EpochExecutionTime;		// Process execution time in seconds since 1970.
+	BOOLEAN Populated;					// Whether not this structure was populated (the image was found).
+
+	ULONG ImageIndex;					// The index of the target image. Must not be larger than the process images list size.
+	WCHAR ImagePath[MAX_PATH];			// The path to the image. Populated by the driver.
+	ULONG StackHistorySize;				// The length of the StackHistory array.
+	STACK_RETURN_INFO StackHistory[1];	// Variable-length array of stack history. Populated by the driver.
+} IMAGE_DETAILED_REQUEST, *PIMAGE_DETAILED_REQUEST;
 */
 VOID
 ImageFilter::PopulateImageDetailedRequest(

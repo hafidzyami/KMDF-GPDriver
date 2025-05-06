@@ -367,6 +367,89 @@ Exit:
     @param Argument2 - A pointer to the structure associated with the operation.
     @return The status of the registry operation.
 */
+/*
+typedef enum _REG_NOTIFY_CLASS {
+    RegNtDeleteKey,
+    RegNtPreDeleteKey = RegNtDeleteKey,
+    RegNtSetValueKey,
+    RegNtPreSetValueKey = RegNtSetValueKey,
+    RegNtDeleteValueKey,
+    RegNtPreDeleteValueKey = RegNtDeleteValueKey,
+    RegNtSetInformationKey,
+    RegNtPreSetInformationKey = RegNtSetInformationKey,
+    RegNtRenameKey,
+    RegNtPreRenameKey = RegNtRenameKey,
+    RegNtEnumerateKey,
+    RegNtPreEnumerateKey = RegNtEnumerateKey,
+    RegNtEnumerateValueKey,
+    RegNtPreEnumerateValueKey = RegNtEnumerateValueKey,
+    RegNtQueryKey,
+    RegNtPreQueryKey = RegNtQueryKey,
+    RegNtQueryValueKey,
+    RegNtPreQueryValueKey = RegNtQueryValueKey,
+    RegNtQueryMultipleValueKey,
+    RegNtPreQueryMultipleValueKey = RegNtQueryMultipleValueKey,
+    RegNtPreCreateKey,
+    RegNtPostCreateKey,
+    RegNtPreOpenKey,
+    RegNtPostOpenKey,
+    RegNtKeyHandleClose,
+    RegNtPreKeyHandleClose = RegNtKeyHandleClose,
+    //
+    // .Net only
+    //
+    RegNtPostDeleteKey,
+    RegNtPostSetValueKey,
+    RegNtPostDeleteValueKey,
+    RegNtPostSetInformationKey,
+    RegNtPostRenameKey,
+    RegNtPostEnumerateKey,
+    RegNtPostEnumerateValueKey,
+    RegNtPostQueryKey,
+    RegNtPostQueryValueKey,
+    RegNtPostQueryMultipleValueKey,
+    RegNtPostKeyHandleClose,
+    RegNtPreCreateKeyEx,
+    RegNtPostCreateKeyEx,
+    RegNtPreOpenKeyEx,
+    RegNtPostOpenKeyEx,
+    //
+    // new to Windows Vista
+    //
+    RegNtPreFlushKey,
+    RegNtPostFlushKey,
+    RegNtPreLoadKey,
+    RegNtPostLoadKey,
+    RegNtPreUnLoadKey,
+    RegNtPostUnLoadKey,
+    RegNtPreQueryKeySecurity,
+    RegNtPostQueryKeySecurity,
+    RegNtPreSetKeySecurity,
+    RegNtPostSetKeySecurity,
+    //
+    // per-object context cleanup
+    //
+    RegNtCallbackObjectContextCleanup,
+    //
+    // new in Vista SP2
+    //
+    RegNtPreRestoreKey,
+    RegNtPostRestoreKey,
+    RegNtPreSaveKey,
+    RegNtPostSaveKey,
+    RegNtPreReplaceKey,
+    RegNtPostReplaceKey,
+    //
+    // new to Windows 10
+    //
+    RegNtPreQueryKeyName,
+    RegNtPostQueryKeyName,
+    RegNtPreSaveMergedKey,
+    RegNtPostSaveMergedKey,
+
+    MaxRegNtNotifyClass //should always be the last enum
+} REG_NOTIFY_CLASS;
+*/
 NTSTATUS 
 ObjectFilter::RegistryCallback(
     _In_ PVOID CallbackContext,
@@ -473,6 +556,22 @@ ObjectFilter::RegistryCallback(
     Filter for certain operations on a protected process.
     @param RegistrationContext - Always NULL.
     @param OperationInformation - Information about the current operation.
+*/
+/*
+typedef struct _OB_PRE_OPERATION_INFORMATION {
+    _In_ OB_OPERATION           Operation;
+    union {
+        _In_ ULONG Flags;
+        struct {
+            _In_ ULONG KernelHandle:1;
+            _In_ ULONG Reserved:31;
+        };
+    };
+    _In_ PVOID                         Object;
+    _In_ POBJECT_TYPE                  ObjectType;
+    _Out_ PVOID                        CallContext;
+    _In_ POB_PRE_OPERATION_PARAMETERS  Parameters;
+} OB_PRE_OPERATION_INFORMATION, *POB_PRE_OPERATION_INFORMATION;
 */
 OB_PREOP_CALLBACK_STATUS
 ObjectFilter::PreOperationCallback(

@@ -133,7 +133,7 @@ DetectionLogic::PushStackViolationAlert(
 	//
 	// Fill the fields of the alert.
 	//
-	stackViolationAlert->AlertInformation.AlertType = StackViolation;
+	stackViolationAlert->AlertInformation.AlertType = AlertTypeStackViolation;
 	stackViolationAlert->AlertInformation.AlertSource = DetectionSource;
 	stackViolationAlert->ViolatingAddress = ViolatingAddress;
 	stackViolationAlert->AlertInformation.SourceId = SourceProcessId;
@@ -258,10 +258,10 @@ DetectionLogic::AuditCallerProcessId(
 	switch (DetectionSource)
 	{
 	case ProcessCreate:
-		remoteOperationAlert->AlertInformation.AlertType = ParentProcessIdSpoofing;
+		remoteOperationAlert->AlertInformation.AlertType = AlertTypeParentProcessIdSpoofing;
 		break;
 	case ThreadCreate:
-		remoteOperationAlert->AlertInformation.AlertType = RemoteThreadCreation;
+		remoteOperationAlert->AlertInformation.AlertType = AlertTypeRemoteThreadCreation;
 		break;
 	}
 	remoteOperationAlert->AlertInformation.AlertSource = DetectionSource;
@@ -338,7 +338,7 @@ DetectionLogic::ReportFilterViolation (
 	}
 	memset(filterViolationAlert, 0, sizeof(FILTER_VIOLATION_ALERT) + stackHistoryBytes);
 
-	filterViolationAlert->AlertInformation.AlertType = FilterViolation;
+	filterViolationAlert->AlertInformation.AlertType = AlertTypeFilterViolation;
 	filterViolationAlert->AlertInformation.AlertSource = DetectionSource;
 	filterViolationAlert->AlertInformation.SourceId = CallerProcessId;
 
