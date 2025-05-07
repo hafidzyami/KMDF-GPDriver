@@ -24,41 +24,87 @@ TDriverClass::Initialize(
 )
 {
     NTSTATUS status = STATUS_SUCCESS;
-    TDriverClass::DriverObject = Driver;
     
-    // Initialize detection logic
-    TDriverClass::Detector = new (NonPagedPool, DETECTION_LOGIC_TAG) DetectionLogic();
-    if (TDriverClass::Detector == NULL) {
-        DbgPrint("[DRIVER] Failed to allocate space for detection logic\n");
-        return STATUS_NO_MEMORY;
-    }
-    
-    // Initialize image filter
-    TDriverClass::ImageProcessFilter = new (NonPagedPool, IMAGE_FILTER_TAG) ImageFilter(TDriverClass::Detector, &status);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[DRIVER] Failed to initialize image process filter with status 0x%X\n", status);
+    __try {
+        DbgPrint("[DRIVER] Starting PeaceMaker component initialization\n");
+        DriverObject = Driver;
+        
+        // Clear all pointers first to ensure clean state
+        Detector = NULL;
+        ImageProcessFilter = NULL;
+        ObjectMonitor = NULL;
+        
+        // Initialize detection logic with try/except for safety
+        __try {
+            Detector = new (NonPagedPool, DETECTION_LOGIC_TAG) DetectionLogic();
+            if (Detector == NULL) {
+                DbgPrint("[DRIVER] Failed to allocate space for detection logic\n");
+                status = STATUS_NO_MEMORY;
+                goto Cleanup;
+            }
+            DbgPrint("[DRIVER] Detection logic initialized successfully\n");
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            DbgPrint("[DRIVER] Exception during detection logic initialization: 0x%X\n", GetExceptionCode());
+            status = STATUS_DRIVER_INTERNAL_ERROR;
+            goto Cleanup;
+        }
+        
+        // Initialize image filter with try/except for safety
+        __try {
+            ImageProcessFilter = new (NonPagedPool, IMAGE_FILTER_TAG) ImageFilter(Detector, &status);
+            if (!NT_SUCCESS(status)) {
+                DbgPrint("[DRIVER] Failed to initialize image process filter with status 0x%X\n", status);
+                goto Cleanup;
+            }
+            
+            if (ImageProcessFilter == NULL) {
+                DbgPrint("[DRIVER] Failed to allocate space for image process filter\n");
+                status = STATUS_NO_MEMORY;
+                goto Cleanup;
+            }
+            DbgPrint("[DRIVER] Image filter initialized successfully\n");
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            DbgPrint("[DRIVER] Exception during image filter initialization: 0x%X\n", GetExceptionCode());
+            status = STATUS_DRIVER_INTERNAL_ERROR;
+            goto Cleanup;
+        }
+        
+        // Initialize object filter with try/except for safety
+        __try {
+            ObjectMonitor = new (NonPagedPool, OBJECT_FILTER_TAG) ObjectFilter(Driver, RegistryPath, Detector, &status);
+            if (!NT_SUCCESS(status)) {
+                DbgPrint("[DRIVER] Failed to initialize object filter with status 0x%X\n", status);
+                goto Cleanup;
+            }
+            
+            if (ObjectMonitor == NULL) {
+                DbgPrint("[DRIVER] Failed to allocate space for object filter\n");
+                status = STATUS_NO_MEMORY;
+                goto Cleanup;
+            }
+            DbgPrint("[DRIVER] Object filter initialized successfully\n");
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            DbgPrint("[DRIVER] Exception during object filter initialization: 0x%X\n", GetExceptionCode());
+            status = STATUS_DRIVER_INTERNAL_ERROR;
+            goto Cleanup;
+        }
+        
+        DbgPrint("[DRIVER] PeaceMaker components initialized successfully\n");
+        return STATUS_SUCCESS;
+        
+    Cleanup:
+        // If initialization fails, clean up any components that were created
+        TDriverClass::Cleanup();
         return status;
     }
-    
-    if (TDriverClass::ImageProcessFilter == NULL) {
-        DbgPrint("[DRIVER] Failed to allocate space for image process filter\n");
-        return STATUS_NO_MEMORY;
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        DbgPrint("[DRIVER] Unexpected exception during component initialization: 0x%X\n", GetExceptionCode());
+        TDriverClass::Cleanup();
+        return STATUS_DRIVER_INTERNAL_ERROR;
     }
-    
-    // Initialize object filter
-    TDriverClass::ObjectMonitor = new (NonPagedPool, OBJECT_FILTER_TAG) ObjectFilter(Driver, RegistryPath, TDriverClass::Detector, &status);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[DRIVER] Failed to initialize object filter with status 0x%X\n", status);
-        return status;
-    }
-    
-    if (TDriverClass::ObjectMonitor == NULL) {
-        DbgPrint("[DRIVER] Failed to allocate space for object filter\n");
-        return STATUS_NO_MEMORY;
-    }
-    
-    DbgPrint("[DRIVER] PeaceMaker components initialized successfully\n");
-    return STATUS_SUCCESS;
 }
 
 /**
@@ -67,28 +113,53 @@ TDriverClass::Initialize(
 VOID
 TDriverClass::Cleanup()
 {
-    // Clean up detection logic
-    if (TDriverClass::Detector != NULL) {
-        TDriverClass::Detector->~DetectionLogic();
-        ExFreePoolWithTag(TDriverClass::Detector, DETECTION_LOGIC_TAG);
-        TDriverClass::Detector = NULL;
+    DbgPrint("[DRIVER] Starting PeaceMaker component cleanup\n");
+    
+    __try {
+        // Clean up detection logic
+        if (Detector != NULL) {
+            __try {
+                Detector->~DetectionLogic();
+                ExFreePoolWithTag(Detector, DETECTION_LOGIC_TAG);
+                DbgPrint("[DRIVER] Detection logic cleaned up\n");
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER) {
+                DbgPrint("[DRIVER] Exception during detection logic cleanup: 0x%X\n", GetExceptionCode());
+            }
+            Detector = NULL;
+        }
+        
+        // Clean up image filter
+        if (ImageProcessFilter != NULL) {
+            __try {
+                ImageProcessFilter->~ImageFilter();
+                ExFreePoolWithTag(ImageProcessFilter, IMAGE_FILTER_TAG);
+                DbgPrint("[DRIVER] Image filter cleaned up\n");
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER) {
+                DbgPrint("[DRIVER] Exception during image filter cleanup: 0x%X\n", GetExceptionCode());
+            }
+            ImageProcessFilter = NULL;
+        }
+        
+        // Clean up object filter
+        if (ObjectMonitor != NULL) {
+            __try {
+                ObjectMonitor->~ObjectFilter();
+                ExFreePoolWithTag(ObjectMonitor, OBJECT_FILTER_TAG);
+                DbgPrint("[DRIVER] Object filter cleaned up\n");
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER) {
+                DbgPrint("[DRIVER] Exception during object filter cleanup: 0x%X\n", GetExceptionCode());
+            }
+            ObjectMonitor = NULL;
+        }
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        DbgPrint("[DRIVER] Unexpected exception during component cleanup: 0x%X\n", GetExceptionCode());
     }
     
-    // Clean up image filter
-    if (TDriverClass::ImageProcessFilter != NULL) {
-        TDriverClass::ImageProcessFilter->~ImageFilter();
-        ExFreePoolWithTag(TDriverClass::ImageProcessFilter, IMAGE_FILTER_TAG);
-        TDriverClass::ImageProcessFilter = NULL;
-    }
-    
-    // Clean up object filter
-    if (TDriverClass::ObjectMonitor != NULL) {
-        TDriverClass::ObjectMonitor->~ObjectFilter();
-        ExFreePoolWithTag(TDriverClass::ObjectMonitor, OBJECT_FILTER_TAG);
-        TDriverClass::ObjectMonitor = NULL;
-    }
-    
-    DbgPrint("[DRIVER] PeaceMaker components cleaned up\n");
+    DbgPrint("[DRIVER] PeaceMaker components cleanup completed\n");
 }
 
 // Untuk memastikan kode C bisa digunakan di C++
@@ -124,13 +195,19 @@ DeviceControlDispatch(
 
 NTSTATUS
 DriverEntry(
-    _In_ PDRIVER_OBJECT DriverObject,
+    _In_ PDRIVER_OBJECT Driver,
     _In_ PUNICODE_STRING RegistryPath
 ) {
     NTSTATUS status = STATUS_SUCCESS;
     UNICODE_STRING deviceName;
     UNICODE_STRING dosDeviceName;
     PDEVICE_OBJECT deviceObject = NULL;
+
+    // Initialize TDriverClass static members first to ensure they're not NULL
+    TDriverClass::DriverObject = Driver;
+    TDriverClass::Detector = NULL;
+    TDriverClass::ImageProcessFilter = NULL;
+    TDriverClass::ObjectMonitor = NULL;
 
     // Initialize driver start time for uptime calculation
     KeQuerySystemTime(&TDriverClass::DriverStartTime);
@@ -143,13 +220,15 @@ DriverEntry(
     TDriverClass::RemoteThreadsDetected = 0;
     TDriverClass::ImagesMonitored = 0;
     TDriverClass::RemoteImagesDetected = 0;
+    
+    DbgPrint("[DRIVER] Driver entry starting");
 
     // Create device object for IOCTL communication
     RtlInitUnicodeString(&deviceName, L"\\Device\\RegistryAnalyzer");
     RtlInitUnicodeString(&dosDeviceName, L"\\DosDevices\\RegistryAnalyzer");
 
     status = IoCreateDevice(
-        DriverObject,
+        Driver,
         0,
         &deviceName,
         FILE_DEVICE_UNKNOWN,
@@ -172,30 +251,27 @@ DriverEntry(
     }
 
     // Set dispatch routines
-    DriverObject->MajorFunction[IRP_MJ_CREATE] = CreateCloseDispatch;
-    DriverObject->MajorFunction[IRP_MJ_CLOSE] = CreateCloseDispatch;
-    DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DeviceControlDispatch;
+    Driver->MajorFunction[IRP_MJ_CREATE] = CreateCloseDispatch;
+    Driver->MajorFunction[IRP_MJ_CLOSE] = CreateCloseDispatch;
+    Driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DeviceControlDispatch;
 
     // Set unload routine
-    DriverObject->DriverUnload = DriverUnload;
+    Driver->DriverUnload = DriverUnload;
 
     // Initialize PeaceMaker components
-    status = TDriverClass::Initialize(DriverObject, RegistryPath);
+    status = TDriverClass::Initialize(Driver, RegistryPath);
     if (!NT_SUCCESS(status)) {
         DbgPrint("[DRIVER] Failed to initialize PeaceMaker components, status: 0x%08X\n", status);
         return status;
     }
 
-    // Register callbacks
-    status = PsSetCreateProcessNotifyRoutineEx2(
-        PsCreateProcessNotifySubsystems,
-        (PVOID)ProcessNotifyCallbackRoutine,
-        FALSE
-    );
-
+    // Register callbacks with proper error handling - simple version for reliability
+    status = PsSetCreateProcessNotifyRoutine(ProcessNotifyCallbackRoutine, FALSE);
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[DRIVER] Failed to initialize process monitoring, status: 0x%08X\n", status);
-        TDriverClass::Cleanup(); // Clean up PeaceMaker components if registration fails
+        DbgPrint("[DRIVER] Failed to register process notification, status: 0x%08X\n", status);
+        TDriverClass::Cleanup();
+        IoDeleteSymbolicLink(&dosDeviceName);
+        IoDeleteDevice(deviceObject);
         return status;
     }
 
@@ -222,56 +298,53 @@ typedef struct _PS_CREATE_NOTIFY_INFO {
     NTSTATUS            CreationStatus;
 } PS_CREATE_NOTIFY_INFO, * PPS_CREATE_NOTIFY_INFO;
 */
-void
+VOID
 ProcessNotifyCallbackRoutine(
-    _In_ PEPROCESS pProcess,
-    _In_ HANDLE hPid,
-    _In_opt_ PPS_CREATE_NOTIFY_INFO pInfo
+    _In_ HANDLE ParentId,
+    _In_ HANDLE ProcessId,
+    _In_ BOOLEAN Create
 )
 {
-    UNREFERENCED_PARAMETER(pProcess);
-
-    if (pInfo == nullptr) {
-        DbgPrint("[PROCESS-TERMINATE] PID: %llu\n", (ULONGLONG)hPid);
-        return;
+    // Use try/except to prevent crashes
+    __try {
+        // Handle process creation
+        if (Create) {
+            DbgPrint("[PROCESS-CREATE] PID: %llu, Parent PID: %llu\n", 
+                     (ULONGLONG)ProcessId, (ULONGLONG)ParentId);
+            
+            // Update statistics safely
+            InterlockedIncrement((PLONG)&TDriverClass::TotalProcessesMonitored);
+            InterlockedIncrement((PLONG)&TDriverClass::ActiveProcesses);
+        }
+        // Handle process termination
+        else {
+            DbgPrint("[PROCESS-TERMINATE] PID: %llu\n", (ULONGLONG)ProcessId);
+            
+            // Update statistics safely
+            if (TDriverClass::ActiveProcesses > 0) {
+                InterlockedDecrement((PLONG)&TDriverClass::ActiveProcesses);
+            }
+        }
     }
-
-    // Print detailed information about the process being created
-    DbgPrint("[PROCESS-CREATE] PID: %llu ----------------------------------------\\\n", (ULONGLONG) hPid);
-
-    DbgPrint("[PROCESS-CREATE] Size of *pInfo structure: %llu\n", pInfo->Size);
-    
-    DbgPrint("[PROCESS-CREATE] Flags: %lx\n", pInfo->Flags);
-    DbgPrint("[PROCESS-CREATE] File Open Name Available: %s\n", pInfo->FileOpenNameAvailable ? "Yes" : "No");
-    DbgPrint("[PROCESS-CREATE] Is Subsystem Process: %s\n", pInfo->IsSubsystemProcess ? "Yes" : "No");
-
-    DbgPrint("[PROCESS-CREATE] Parent PID: %llu\n", (ULONGLONG) pInfo->ParentProcessId);
-    DbgPrint("[PROCESS-CREATE] Creating Thread ID: %llu (Process: %llu)\n",
-        (ULONGLONG) pInfo->CreatingThreadId.UniqueThread, (ULONGLONG) pInfo->CreatingThreadId.UniqueProcess);
-
-    if (pInfo->FileObject != nullptr) DbgPrint("[PROCESS-CREATE] File Object: 0x%p\n", pInfo->FileObject);
-    else DbgPrint("[PROCESS-CREATE] File Object: [NULL]\n");
-
-    if (pInfo->ImageFileName != nullptr) DbgPrint("[PROCESS-CREATE] Image: %wZ\n", pInfo->ImageFileName);
-    else DbgPrint("[PROCESS-CREATE] Image: [UNKNOWN]\n");
-
-    if (pInfo->CommandLine != nullptr) DbgPrint("[PROCESS-CREATE] Command Line: %wZ\n", pInfo->CommandLine);
-    else DbgPrint("[PROCESS-CREATE] Command Line: [NONE]\n");
-
-    DbgPrint("[PROCESS-CREATE] Creation Status: %ld\n", pInfo->CreationStatus);
-
-    DbgPrint("[PROCESS-CREATE]           ----------------------------------------/\n");
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        DbgPrint("[PROCESS-NOTIFY] Exception in callback: 0x%X\n", GetExceptionCode());
+    }
 }
 
 void
 CleanupProcessMonitoring()
 {
-    PsSetCreateProcessNotifyRoutineEx2(
-        PsCreateProcessNotifySubsystems,
-        (PVOID)ProcessNotifyCallbackRoutine,
-        TRUE
-    );
-    DbgPrint("[PROCESS-MONITOR] Process monitoring cleanup complete\n");
+    NTSTATUS status;
+    
+    // Simple unregistration matching our simplified registration
+    status = PsSetCreateProcessNotifyRoutine(ProcessNotifyCallbackRoutine, TRUE);
+    
+    if (NT_SUCCESS(status)) {
+        DbgPrint("[PROCESS-MONITOR] Process monitoring cleanup complete\n");
+    }
+    else {
+        DbgPrint("[PROCESS-MONITOR] Process monitoring cleanup failed, status: 0x%08X\n", status);
+    }
 }
 
 /**

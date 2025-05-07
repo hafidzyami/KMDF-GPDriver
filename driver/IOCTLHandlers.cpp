@@ -104,16 +104,41 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp) {
 
     // The output buffer is large enough for at least the header, now see if we can fit all processes
     PPROCESS_LIST pList = (PPROCESS_LIST)outputBuffer;
-    ULONG maxProcesses = (outputBufferLength - sizeof(PROCESS_LIST)) / sizeof(PROCESS_INFO) + 1;
+    
+    // Check if pList is NULL
+    if (pList == NULL) {
+        status = STATUS_INVALID_PARAMETER;
+        DbgPrint("[IOCTL] Invalid output buffer for process list");
+        goto Exit;
+    }
+    
+    // Calculate max processes carefully to avoid overflow
+    ULONG maxProcesses = 0;
+    if (outputBufferLength > sizeof(PROCESS_LIST)) {
+        maxProcesses = (outputBufferLength - sizeof(PROCESS_LIST)) / sizeof(PROCESS_INFO);
+        if ((outputBufferLength - sizeof(PROCESS_LIST)) % sizeof(PROCESS_INFO) != 0) {
+            maxProcesses += 1; // Add one more if there's partial space
+        }
+    }
 
     // Initialize the count to 0, will be updated as we fill the list
     pList->Count = 0;
+    
+    // Check if ImageProcessFilter is initialized
+    if (TDriverClass::GetImageProcessFilter() == NULL) {
+        DbgPrint("[IOCTL] ImageProcessFilter is not initialized");
+        pList->Count = 0;
+        bytesReturned = sizeof(PROCESS_LIST);
+        status = STATUS_SUCCESS; // Return empty list instead of failing
+        goto Exit;
+    }
 
     // Check if we have actual process data from ImageProcessFilter
-    ULONG actualProcessCount = (ULONG)TDriverClass::GetImageProcessFilter()->ProcessHistorySize;
+    ULONG actualCount = 0;
     
-    // Only proceed if we have actual process data
-    if (actualProcessCount > 0) {
+    // Only proceed if we have actual process data and maxProcesses > 0
+    if (maxProcesses > 0) {
+        // Allocate memory for process summaries
         processSummaries = 
             (PPROCESS_SUMMARY_ENTRY)ExAllocatePool2(POOL_FLAG_PAGED, maxProcesses * sizeof(PROCESS_SUMMARY_ENTRY), 'PROS');
 
@@ -125,24 +150,39 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp) {
 
         RtlZeroMemory(processSummaries, maxProcesses * sizeof(PROCESS_SUMMARY_ENTRY));
 
-        // Get the process summaries
-        actualProcessCount = TDriverClass::GetImageProcessFilter()->GetProcessHistorySummary(
-            0,                // Skip count - start from the beginning
-            processSummaries, // Buffer for summaries
-            maxProcesses      // Maximum processes to return
-        );
-
+        // Get the process summaries with proper error handling
+        __try {
+            actualCount = TDriverClass::GetImageProcessFilter()->GetProcessHistorySummary(
+                0,                // Skip count - start from the beginning
+                processSummaries, // Buffer for summaries
+                maxProcesses      // Maximum processes to return
+            );
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            DbgPrint("[IOCTL] Exception occurred while getting process history summaries");
+            actualCount = 0; // Reset count on exception
+        }
+        
         // Convert PROCESS_SUMMARY_ENTRY to PROCESS_INFO
-        for (ULONG i = 0; i < actualProcessCount; i++) {
-            // [Convert process data, same as original code]
+        for (ULONG i = 0; i < actualCount && i < maxProcesses; i++) {
+            // Copy basic process information
+            pList->Processes[i].ProcessId = HandleToUlong(processSummaries[i].ProcessId);
+            pList->Processes[i].IsTerminated = processSummaries[i].ProcessTerminated;
+            
+            // Copy image name with proper bounds checking
+            RtlZeroMemory(pList->Processes[i].ImagePath, sizeof(pList->Processes[i].ImagePath));
+            RtlCopyMemory(pList->Processes[i].ImagePath, 
+                         processSummaries[i].ImageFileName, 
+                         min(sizeof(pList->Processes[i].ImagePath) - sizeof(WCHAR), 
+                             wcslen(processSummaries[i].ImageFileName) * sizeof(WCHAR)));
         }
     }
     // If no actual process data, we just return count = 0
 
-    pList->Count = actualProcessCount;
-    bytesReturned = sizeof(PROCESS_LIST) + (actualProcessCount - 1) * sizeof(PROCESS_INFO);
+    pList->Count = actualCount;
+    bytesReturned = sizeof(PROCESS_LIST) + (actualCount - 1) * sizeof(PROCESS_INFO);
 
-    DbgPrint("[IOCTL] Successfully returned %lu processes", actualProcessCount);
+    DbgPrint("[IOCTL] Successfully returned %lu processes", actualCount);
 
 Exit:
     // Clean up allocated memory if needed
@@ -417,10 +457,17 @@ HandleGetImageLoadHistory(
         goto Exit;
     }
 
-    // Get the requested process ID from the input buffer
+    // Get the requested process ID from the input buffer with safety checks
     ULONG requestedProcessId = 0;
-    if (inputBuffer != NULL) {
-        requestedProcessId = *(PULONG)inputBuffer;
+    if (inputBuffer != NULL && inputBufferLength >= sizeof(ULONG)) {
+        __try {
+            requestedProcessId = *(PULONG)inputBuffer;
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            DbgPrint("[IOCTL] Exception when accessing input buffer, code: 0x%08X\n", GetExceptionCode());
+            status = STATUS_INVALID_PARAMETER;
+            goto Exit;
+        }
     }
 
     // First check if the output buffer is large enough for the header

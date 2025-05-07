@@ -27,7 +27,7 @@
 #define IOCTL_ALERT_BUFFER_TAG 'aBmP'      // Alert buffer
 
 class TDriverClass {
-private:
+public:
     static PDRIVER_OBJECT DriverObject;
     static PDETECTION_LOGIC Detector;
     static PIMAGE_FILTER ImageProcessFilter;
@@ -78,11 +78,11 @@ NTSTATUS DeviceControlDispatch(
 
 void CleanupProcessMonitoring();
 
-void
+VOID
 ProcessNotifyCallbackRoutine(
-    _In_ PEPROCESS pProcess,
-    _In_ HANDLE hPid,
-    _In_opt_ PPS_CREATE_NOTIFY_INFO pInfo
+    _In_ HANDLE ParentId,
+    _In_ HANDLE ProcessId,
+    _In_ BOOLEAN Create
 );
 
 // IOCTL Handler functions
