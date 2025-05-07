@@ -84,9 +84,9 @@ private:
 		_In_ HANDLE ThreadId);
 
 	static VOID ThreadNotifyRoutine(
-		HANDLE ProcessId,
-		HANDLE ThreadId,
-		BOOLEAN Create);
+		_In_ HANDLE ProcessId,
+		_In_ HANDLE ThreadId,
+		_In_ BOOLEAN Create);
 
 public:
 	static PROCESS_HISTORY_ENTRY* ProcessHistory;     // Array of process history objects

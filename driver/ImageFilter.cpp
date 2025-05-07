@@ -476,11 +476,11 @@ VOID ImageFilter::CreateProcessNotifyRoutine(
 	if (CreateInfo)
 	{
 		ImageFilter::AddProcessToHistory(ProcessId, CreateInfo);
-		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Registered process 0x%X.", ProcessId);
+		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Registered process %p.", ProcessId);
 	}
 	else
 	{
-		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Terminating process 0x%X.", ProcessId);
+		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Terminating process %p.", ProcessId);
 		//
 		// Set the process as "terminated".
 		//
@@ -827,7 +827,6 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 	//
 	// Iterate histories for a match.
 	//
-	currentProcessHistory = NULL;
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
@@ -845,7 +844,7 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 	//
 	if (currentProcessHistory == NULL)
 	{
-		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to find PID 0x%X in history.", ProcessId);
+		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to find PID %p in history.", ProcessId);
 		status = STATUS_NOT_FOUND;
 		goto Exit;
 	}
@@ -894,7 +893,11 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 		status = RtlStringCbCopyUnicodeString(newImageLoadHistory->ImageFileName.Buffer, SCAST<SIZE_T>(FullImageName->Length) + 2, FullImageName);
 		if (NT_SUCCESS(status) == FALSE)
 		{
-			DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to copy the image file name with status 0x%X. Destination size = 0x%X, Source Size = 0x%X.", status, SCAST<SIZE_T>(FullImageName->Length) + 2, SCAST<SIZE_T>(FullImageName->Length));
+			DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to copy the image file name with status 0x%X. Destination size = 0x%X, Source Size = 0x%X.",
+				status,
+				(unsigned int)(SCAST<SIZE_T>(FullImageName->Length) + 2),
+				(unsigned int)(SCAST<SIZE_T>(FullImageName->Length)));
+
 			goto Exit;
 		}
 	}
@@ -943,15 +946,15 @@ Exit:
 		if (newImageLoadHistory->ImageFileName.Buffer)
 		{
 			ExFreePoolWithTag(newImageLoadHistory->ImageFileName.Buffer, IMAGE_NAME_TAG);
-			DBGPRINT("Free'd 'PmIn' at 0x%llx.", newImageLoadHistory->ImageFileName.Buffer);
+			DBGPRINT("Free'd 'PmIn' at %p.", newImageLoadHistory->ImageFileName.Buffer);
 		}
 		if (newImageLoadHistory->CallerStackHistory)
 		{
 			ExFreePoolWithTag(newImageLoadHistory->CallerStackHistory, STACK_HISTORY_TAG);
-			DBGPRINT("Free'd 'PmSh' at 0x%llx.", newImageLoadHistory->CallerStackHistory);
+			DBGPRINT("Free'd 'PmSh' at %p.", newImageLoadHistory->CallerStackHistory);
 		}
 		ExFreePoolWithTag(newImageLoadHistory, IMAGE_HISTORY_TAG);
-		DBGPRINT("Free'd 'PmIh' at 0x%llx.", newImageLoadHistory);
+		DBGPRINT("Free'd 'PmIh' at %p.", newImageLoadHistory);
 	}
 }
 
@@ -1227,7 +1230,7 @@ ImageFilter::GetThreadStartAddress(
 	status = PsLookupThreadByThreadId(ThreadId, &threadObject);
 	if (NT_SUCCESS(status) == FALSE)
 	{
-		DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to lookup thread 0x%X by its ID.", ThreadId);
+		DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to lookup thread %p by its ID.", ThreadId);
 		goto Exit;
 	}
 
@@ -1306,6 +1309,7 @@ VOID ImageFilter::ThreadNotifyRoutine(
 	//
 	// Grab the name of the caller.
 	//
+
 	if (ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &threadCallerName) == FALSE)
 	{
 		threadCallerName = NULL; // Ensure it's NULL if GetProcessImageFileName fails
