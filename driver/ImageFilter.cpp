@@ -412,7 +412,7 @@ VOID ImageFilter::TerminateProcessInHistory(
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
 
 	//
 	// Iterate histories for a match.
