@@ -730,6 +730,7 @@ ImageFilter::GetImageLoadHistory(
 	return entryCount;
 }
 
+
 /**
 	Retrieve the full image file name for a process.
 	@param ProcessId - The process to get the name of.
@@ -1350,7 +1351,7 @@ VOID ImageFilter::ThreadNotifyRoutine(
 	ULONG processThreadCount = 0;
 	PVOID threadStartAddress = NULL; // Initialize to NULL
 	PSTACK_RETURN_INFO threadCreateStack = NULL;
-	ULONG threadCreateStackSize = 20;
+	ULONG threadCreateStackSize = 64;
 	PUNICODE_STRING threadCallerName = NULL; // Initialize to NULL
 	PUNICODE_STRING threadTargetName = NULL;
 
@@ -1367,8 +1368,7 @@ VOID ImageFilter::ThreadNotifyRoutine(
 	{
 		DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
 		return; // Skip at high IRQL instead of trying to allocate memory
-	} 
-	
+	}
 
 	//
 	// If we can't find the process or it's the first thread of the process, skip it.
@@ -1470,9 +1470,20 @@ ImageFilter::AddProcessThreadCount(
 
 	foundProcess = FALSE;
 
+	// Initialize the output value to ensure it's never uninitialized
+	if (ThreadCount != NULL) {
+		*ThreadCount = 0;
+	}
+
 	if (ImageFilter::destroying)
 	{
 		return foundProcess;
+	}
+
+	// Check IRQL - we shouldn't do this at high IRQLs
+	if (KeGetCurrentIrql() > PASSIVE_LEVEL) {
+		DBGPRINT("ImageFilter!AddProcessThreadCount: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
+		return FALSE; // Skip at high IRQL
 	}
 
 	//
@@ -1483,14 +1494,15 @@ ImageFilter::AddProcessThreadCount(
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
-		{
+		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++) {
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
 			if (ProcessId == currentProcessHistory->ProcessId &&
 				currentProcessHistory->ProcessTerminated == FALSE)
 			{
 				currentProcessHistory->ProcessThreadCount++;
-				*ThreadCount = currentProcessHistory->ProcessThreadCount;
+				if (ThreadCount != NULL) {
+					*ThreadCount = currentProcessHistory->ProcessThreadCount;
+				}
 				foundProcess = TRUE;
 				break;
 			}
