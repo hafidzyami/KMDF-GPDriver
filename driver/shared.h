@@ -35,7 +35,7 @@
 //
 // Maximum amount of STACK_RETURN_INFO to have in the process execution stack return history.
 //
-#define MAX_STACK_RETURN_HISTORY 30
+#define MAX_STACK_RETURN_HISTORY 64  // Increased from 30 to 64
 
 typedef struct ProcessSummaryEntry
 {

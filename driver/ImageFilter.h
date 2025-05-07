@@ -46,18 +46,20 @@ typedef struct ProcessHistoryEntry
 	ULONG CallerStackHistorySize;		   // The size of the variable-length stack history array.
 
 	PIMAGE_LOAD_HISTORY_ENTRY ImageLoadHistory; // A linked-list of loaded images and their respective stack histories.
-	EX_PUSH_LOCK ImageLoadHistoryLock;			// The lock protecting the linked-list of loaded images.
+	// We now use the global process lock instead of individual locks
+	// EX_PUSH_LOCK ImageLoadHistoryLock; // The lock protecting the linked-list of loaded images.
 	ULONG ImageLoadHistorySize;					// The size of the image load history linked-list.
 
 	// Additional fields needed for IOCTLHandlers.cpp
 	struct _THREAD_CREATE_ENTRY* ThreadHistory;   // Thread creation history for this process
-	EX_PUSH_LOCK ThreadHistoryLock;              // Lock protecting the thread history
+	// We use the global process lock instead of individual locks
+	// EX_PUSH_LOCK ThreadHistoryLock;              // Lock protecting the thread history
 	ULONG ThreadHistorySize;                     // Number of entries in the thread history
 } PROCESS_HISTORY_ENTRY, *PPROCESS_HISTORY_ENTRY;
 
 typedef class ImageFilter
 {
-private:
+public:
 	// Image History Filter components
 	static VOID CreateProcessNotifyRoutine(
 		_In_ PEPROCESS Process,

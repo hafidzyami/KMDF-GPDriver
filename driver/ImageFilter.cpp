@@ -1,22 +1,60 @@
 #include "pch.h"
 #include "ImageFilter.h"
 
+// Static DPC variables for deferred processing
+static KDPC ImageNotificationDpc;
+static BOOLEAN DpcInitialized = FALSE;
+static PVOID DeferredImageName = NULL;
+static HANDLE DeferredProcessId = NULL;
+static PVOID DeferredImageInfo = NULL;
+
+// DPC routine for deferred image processing
+VOID DeferredImageNotifyRoutine(
+	_In_ PKDPC Dpc,
+	_In_opt_ PVOID DeferredContext,
+	_In_opt_ PVOID SystemArgument1,
+	_In_opt_ PVOID SystemArgument2)
+{
+	UNREFERENCED_PARAMETER(Dpc);
+	UNREFERENCED_PARAMETER(DeferredContext);
+	UNREFERENCED_PARAMETER(SystemArgument1);
+	UNREFERENCED_PARAMETER(SystemArgument2);
+
+	// Process at PASSIVE_LEVEL
+	if (KeGetCurrentIrql() == PASSIVE_LEVEL)
+	{
+		if (DeferredImageName != NULL && DeferredProcessId != NULL)
+		{
+			// Process the image notification at PASSIVE_LEVEL
+			ImageFilter::LoadImageNotifyRoutine((PUNICODE_STRING)DeferredImageName, DeferredProcessId,
+												(PIMAGE_INFO)DeferredImageInfo);
+
+			// Clear the deferred parameters
+			DeferredImageName = NULL;
+			DeferredProcessId = NULL;
+			DeferredImageInfo = NULL;
+		}
+	}
+}
+
 // Initialize static member variables
 StackWalker ImageFilter::walker;
 PROCESS_HISTORY_ENTRY *ImageFilter::ProcessHistory; // Array-based approach
-KSPIN_LOCK ImageFilter::ProcessHistoryLock;        // Spin lock for thread safety
-KIRQL ImageFilter::ProcessHistoryOldIrql;          // Old IRQL for spin lock
+KSPIN_LOCK ImageFilter::ProcessHistoryLock;			// Spin lock for thread safety
+KIRQL ImageFilter::ProcessHistoryOldIrql;			// Old IRQL for spin lock
 BOOLEAN ImageFilter::destroying;
 ULONG64 ImageFilter::ProcessHistorySize;
 PDETECTION_LOGIC ImageFilter::detector;
 
 // Helper functions to manage locks
-inline void AcquireProcessLock() {
-    KeAcquireSpinLock(&ImageFilter::ProcessHistoryLock, &ImageFilter::ProcessHistoryOldIrql);
+inline void AcquireProcessLock()
+{
+	KeAcquireSpinLock(&ImageFilter::ProcessHistoryLock, &ImageFilter::ProcessHistoryOldIrql);
 }
 
-inline void ReleaseProcessLock() {
-    KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
+inline void ReleaseProcessLock()
+{
+	KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
 }
 
 /**
@@ -57,7 +95,7 @@ ImageFilter::ImageFilter(
 	}
 
 	// Initialize spin lock
-KeInitializeSpinLock(&ImageFilter::ProcessHistoryLock);
+	KeInitializeSpinLock(&ImageFilter::ProcessHistoryLock);
 
 	// Allocate array-based process history instead of linked list
 	ImageFilter::ProcessHistory = RCAST<PPROCESS_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(PROCESS_HISTORY_ENTRY) * 100, PROCESS_HISTORY_TAG));
@@ -93,6 +131,13 @@ KeInitializeSpinLock(&ImageFilter::ProcessHistoryLock);
 		DBGPRINT("ImageFilter!ImageFilter: Failed to create thread notify routine with status 0x%X.", tempStatus);
 		*InitializeStatus = tempStatus;
 		return;
+	}
+
+	// Initialize DPC for deferred image processing
+	if (!DpcInitialized)
+	{
+		KeInitializeDpc(&ImageNotificationDpc, DeferredImageNotifyRoutine, NULL);
+		DpcInitialized = TRUE;
 	}
 
 	*InitializeStatus = STATUS_SUCCESS;
@@ -258,7 +303,8 @@ VOID ImageFilter::AddProcessToHistory(
 	}
 
 	// Check if we have room in the array
-	if (ImageFilter::ProcessHistorySize >= 100) {
+	if (ImageFilter::ProcessHistorySize >= 100)
+	{
 		DBGPRINT("ImageFilter!AddProcessToHistory: Process history array is full.");
 		status = STATUS_NO_MEMORY;
 		goto Exit;
@@ -338,11 +384,12 @@ VOID ImageFilter::AddProcessToHistory(
 	//
 	newProcessHistory->CallerStackHistorySize = MAX_STACK_RETURN_HISTORY; // Will be updated in the resolve function.
 	walker.WalkAndResolveStack(&newProcessHistory->CallerStackHistory, &newProcessHistory->CallerStackHistorySize, STACK_HISTORY_TAG);
+	// We'll continue even if stack walk fails - just log it
 	if (newProcessHistory->CallerStackHistory == NULL)
 	{
-		DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for the stack history.");
-		status = STATUS_NO_MEMORY;
-		goto Exit;
+		DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for the stack history - continuing without stack info.");
+		// Set a default small size
+		newProcessHistory->CallerStackHistorySize = 0;
 	}
 
 	newProcessHistory->ImageLoadHistory = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(IMAGE_LOAD_HISTORY_ENTRY), IMAGE_HISTORY_TAG));
@@ -359,7 +406,7 @@ VOID ImageFilter::AddProcessToHistory(
 	//
 	// Initialize this last so we don't have to delete it if anything failed.
 	//
-	// Initialize image history lock - not used since we're using the process lock
+	// We're using the global process lock instead of individual image history locks
 
 	//
 	// Grab a lock to add an entry.
@@ -374,23 +421,26 @@ VOID ImageFilter::AddProcessToHistory(
 	//
 	// Audit the stack.
 	//
-	ImageFilter::detector->AuditUserStackWalk(ProcessCreate,
-											  newProcessHistory->ProcessId,
-											  newProcessHistory->ParentImageFileName,
-											  newProcessHistory->ProcessImageFileName,
-											  newProcessHistory->CallerStackHistory,
-											  newProcessHistory->CallerStackHistorySize);
+	if (newProcessHistory->CallerStackHistory != NULL && newProcessHistory->CallerStackHistorySize > 0)
+	{
+		ImageFilter::detector->AuditUserStackWalk(ProcessCreate,
+												  newProcessHistory->ProcessId,
+												  newProcessHistory->ParentImageFileName,
+												  newProcessHistory->ProcessImageFileName,
+												  newProcessHistory->CallerStackHistory,
+												  newProcessHistory->CallerStackHistorySize);
 
-	//
-	// Check for parent process ID spoofing.
-	//
-	ImageFilter::detector->AuditCallerProcessId(ProcessCreate,
-												PsGetCurrentProcessId(),
-												CreateInfo->ParentProcessId,
-												newProcessHistory->ParentImageFileName,
-												newProcessHistory->ProcessImageFileName,
-												newProcessHistory->CallerStackHistory,
-												newProcessHistory->CallerStackHistorySize);
+		//
+		// Check for parent process ID spoofing.
+		//
+		ImageFilter::detector->AuditCallerProcessId(ProcessCreate,
+													PsGetCurrentProcessId(),
+													CreateInfo->ParentProcessId,
+													newProcessHistory->ParentImageFileName,
+													newProcessHistory->ProcessImageFileName,
+													newProcessHistory->CallerStackHistory,
+													newProcessHistory->CallerStackHistorySize);
+	}
 Exit:
 	return; // Return instead of trying to free memory that's part of the array
 }
@@ -412,7 +462,7 @@ VOID ImageFilter::TerminateProcessInHistory(
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	//
 	// Iterate histories for a match.
@@ -435,7 +485,7 @@ VOID ImageFilter::TerminateProcessInHistory(
 	//
 	// Release the lock.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 }
 
 /**
@@ -501,10 +551,12 @@ ImageFilter::GetImageLoadHistory(
 	_Out_ PIMAGE_LOAD_INFO ImageLoadInfoArray,
 	_In_ ULONG MaxEntries)
 {
-	if (ImageLoadInfoArray != NULL && MaxEntries > 0) {
-        RtlZeroMemory(ImageLoadInfoArray, MaxEntries * sizeof(IMAGE_LOAD_INFO));
-    }
-	
+	// Initialize the output array to all zeros
+	if (ImageLoadInfoArray != NULL && MaxEntries > 0)
+	{
+		RtlZeroMemory(ImageLoadInfoArray, MaxEntries * sizeof(IMAGE_LOAD_INFO));
+	}
+
 	PPROCESS_HISTORY_ENTRY currentProcessHistory;
 	PIMAGE_LOAD_HISTORY_ENTRY currentImageEntry = NULL;
 	ULONG entryCount = 0;
@@ -518,25 +570,27 @@ ImageFilter::GetImageLoadHistory(
 	RtlZeroMemory(ImageLoadInfoArray, MaxEntries * sizeof(IMAGE_LOAD_INFO));
 
 	// Acquire a shared lock to iterate processes
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	// Iterate through all processes
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize && entryCount < MaxEntries; i++) {
+		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize && entryCount < MaxEntries; i++)
+		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
 			// If ProcessId is specified, only look at that process
 			if (ProcessId == 0 || currentProcessHistory->ProcessId == ProcessId)
 			{
 				// Acquire lock for image history list
 				// Use process lock instead for simplicity
-AcquireProcessLock();
+				AcquireProcessLock();
 
 				// Iterate through all images in this process
 				if (currentProcessHistory->ImageLoadHistory)
 				{
-					if (currentImageEntry == NULL) {
+					if (currentImageEntry == NULL)
+					{
 						continue;
 					}
 					currentImageEntry = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(currentProcessHistory->ImageLoadHistory->ListEntry.Flink);
@@ -596,7 +650,7 @@ AcquireProcessLock();
 				}
 
 				// Release image history lock
-				ExReleaseFastMutex((PFAST_MUTEX)&currentProcessHistory->ImageLoadHistoryLock);
+				ReleaseProcessLock();
 
 				// If we're only looking for a specific process, we can stop here
 				if (ProcessId != 0)
@@ -611,7 +665,7 @@ AcquireProcessLock();
 	}
 
 	// Release process history lock
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 
 	// If we didn't find any entries, add some sample entries for demonstration purposes
 	// This ensures we always return some data even in a fresh system
@@ -819,10 +873,25 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 		return;
 	}
 
+	// Check IRQL level - if above PASSIVE_LEVEL, queue a DPC for later processing
+	if (KeGetCurrentIrql() > PASSIVE_LEVEL)
+	{
+		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Deferring processing due to high IRQL (%d)", KeGetCurrentIrql());
+
+		// Store parameters for deferred processing
+		DeferredImageName = FullImageName;
+		DeferredProcessId = ProcessId;
+		DeferredImageInfo = ImageInfo;
+
+		// Queue the DPC to run later at PASSIVE_LEVEL
+		KeInsertQueueDpc(&ImageNotificationDpc, NULL, NULL);
+		return;
+	}
+
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	//
 	// Iterate histories for a match.
@@ -830,7 +899,8 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++) {
+		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
+		{
 			if (ImageFilter::ProcessHistory[i].ProcessId == ProcessId && ImageFilter::ProcessHistory[i].ProcessTerminated == FALSE)
 			{
 				currentProcessHistory = &ImageFilter::ProcessHistory[i];
@@ -894,9 +964,9 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 		if (NT_SUCCESS(status) == FALSE)
 		{
 			DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to copy the image file name with status 0x%X. Destination size = 0x%X, Source Size = 0x%X.",
-				status,
-				(unsigned int)(SCAST<SIZE_T>(FullImageName->Length) + 2),
-				(unsigned int)(SCAST<SIZE_T>(FullImageName->Length)));
+					 status,
+					 (unsigned int)(SCAST<SIZE_T>(FullImageName->Length) + 2),
+					 (unsigned int)(SCAST<SIZE_T>(FullImageName->Length)));
 
 			goto Exit;
 		}
@@ -907,36 +977,39 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 	//
 	newImageLoadHistory->CallerStackHistorySize = MAX_STACK_RETURN_HISTORY; // Will be updated in the resolve function.
 	walker.WalkAndResolveStack(&newImageLoadHistory->CallerStackHistory, &newImageLoadHistory->CallerStackHistorySize, STACK_HISTORY_TAG);
+	// Don't fail if we can't get stack info, just continue without it
 	if (newImageLoadHistory->CallerStackHistory == NULL)
 	{
-		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the stack history.");
-		status = STATUS_NO_MEMORY;
-		goto Exit;
+		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the stack history - continuing without stack info.");
+		newImageLoadHistory->CallerStackHistorySize = 0;
 	}
 
 	// Use process lock instead for simplicity
-AcquireProcessLock();
+	AcquireProcessLock();
 
 	InsertHeadList(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory), RCAST<PLIST_ENTRY>(newImageLoadHistory));
 	currentProcessHistory->ImageLoadHistorySize++;
 
 	// Release process lock
-ReleaseProcessLock();
+	ReleaseProcessLock();
 
 	//
 	// Audit the stack.
 	//
-	ImageFilter::detector->AuditUserStackWalk(ImageLoad,
-											  PsGetCurrentProcessId(),
-											  currentProcessHistory->ProcessImageFileName,
-											  &newImageLoadHistory->ImageFileName,
-											  newImageLoadHistory->CallerStackHistory,
-											  newImageLoadHistory->CallerStackHistorySize);
+	if (newImageLoadHistory->CallerStackHistory != NULL && newImageLoadHistory->CallerStackHistorySize > 0)
+	{
+		ImageFilter::detector->AuditUserStackWalk(ImageLoad,
+												  PsGetCurrentProcessId(),
+												  currentProcessHistory->ProcessImageFileName,
+												  &newImageLoadHistory->ImageFileName,
+												  newImageLoadHistory->CallerStackHistory,
+												  newImageLoadHistory->CallerStackHistorySize);
+	}
 Exit:
 	//
 	// Release the lock.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 
 	//
 	// Clean up on failure.
@@ -997,7 +1070,7 @@ ImageFilter::GetProcessHistorySummary(
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	//
 	// Iterate histories for the MaxProcessSummaries processes after SkipCount processes.
@@ -1005,7 +1078,8 @@ ImageFilter::GetProcessHistorySummary(
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize && actualFilledSummaries < MaxProcessSummaries; i++) {
+		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize && actualFilledSummaries < MaxProcessSummaries; i++)
+		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
 			if (currentProcessIndex >= SkipCount)
 			{
@@ -1038,7 +1112,7 @@ ImageFilter::GetProcessHistorySummary(
 	//
 	// Release the lock.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 
 	return actualFilledSummaries;
 }
@@ -1091,12 +1165,13 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 processIndex = 0; processIndex < ImageFilter::ProcessHistorySize; processIndex++) {
+		for (ULONG64 processIndex = 0; processIndex < ImageFilter::ProcessHistorySize; processIndex++)
+		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
 			if (ProcessDetailedRequest->ProcessId == currentProcessHistory->ProcessId &&
 				ProcessDetailedRequest->EpochExecutionTime == currentProcessHistory->EpochExecutionTime)
@@ -1158,7 +1233,7 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
 				// Iterate the images for basic information.
 				//
 				// Use global lock for simplicity
-AcquireProcessLock();
+				AcquireProcessLock();
 
 				//
 				// The head isn't an element so skip it.
@@ -1191,7 +1266,7 @@ AcquireProcessLock();
 				}
 
 				// Release global lock
-ReleaseProcessLock();
+				ReleaseProcessLock();
 
 				ProcessDetailedRequest->ImageSummarySize = i; // Actual number of images put into the array.
 				break;
@@ -1203,7 +1278,7 @@ ReleaseProcessLock();
 	//
 	// Release the lock.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 }
 
 /**
@@ -1273,16 +1348,11 @@ VOID ImageFilter::ThreadNotifyRoutine(
 	_In_ BOOLEAN Create)
 {
 	ULONG processThreadCount = 0;
-	PVOID threadStartAddress;
-	PSTACK_RETURN_INFO threadCreateStack;
-	ULONG threadCreateStackSize;
-	PUNICODE_STRING threadCallerName;
-	PUNICODE_STRING threadTargetName;
-
-	threadCreateStack = NULL;
-	threadCreateStackSize = 20;
-	threadCallerName = NULL;
-	threadTargetName = NULL;
+	PVOID threadStartAddress = NULL; // Initialize to NULL
+	PSTACK_RETURN_INFO threadCreateStack = NULL;
+	ULONG threadCreateStackSize = 20;
+	PUNICODE_STRING threadCallerName = NULL; // Initialize to NULL
+	PUNICODE_STRING threadTargetName = NULL;
 
 	//
 	// We don't really care about thread termination or if the thread is kernel-mode.
@@ -1291,6 +1361,14 @@ VOID ImageFilter::ThreadNotifyRoutine(
 	{
 		return;
 	}
+
+	// Check IRQL level - we should only proceed at PASSIVE_LEVEL
+	if (KeGetCurrentIrql() > PASSIVE_LEVEL)
+	{
+		DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
+		return; // Skip at high IRQL instead of trying to allocate memory
+	} 
+	
 
 	//
 	// If we can't find the process or it's the first thread of the process, skip it.
@@ -1305,14 +1383,20 @@ VOID ImageFilter::ThreadNotifyRoutine(
 	// Walk the stack.
 	//
 	ImageFilter::walker.WalkAndResolveStack(&threadCreateStack, &threadCreateStackSize, STACK_HISTORY_TAG);
+	// Continue even if stack walk fails
+	if (threadCreateStack == NULL)
+	{
+		DBGPRINT("ImageFilter!ThreadNotifyRoutine: Failed to walk the stack, continuing without stack info.");
+		threadCreateStackSize = 0;
+	}
 
 	//
 	// Grab the name of the caller.
 	//
-
+	threadCallerName = NULL; // Initialize to NULL first
 	if (ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &threadCallerName) == FALSE)
 	{
-		threadCallerName = NULL; // Ensure it's NULL if GetProcessImageFileName fails
+		// Already initialized to NULL above
 		goto Exit;
 	}
 
@@ -1337,20 +1421,24 @@ VOID ImageFilter::ThreadNotifyRoutine(
 	//
 	threadStartAddress = ImageFilter::GetThreadStartAddress(ThreadId);
 
-	//
-	// Audit the target's start address.
-	//
-	ImageFilter::detector->AuditUserPointer(ThreadCreate, threadStartAddress, PsGetCurrentProcessId(), threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
+	// Only perform audits if we actually have stack information
+	if (threadCreateStack != NULL && threadCreateStackSize > 0)
+	{
+		//
+		// Audit the target's start address.
+		//
+		ImageFilter::detector->AuditUserPointer(ThreadCreate, threadStartAddress, PsGetCurrentProcessId(), threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
 
-	//
-	// Audit the caller's stack.
-	//
-	ImageFilter::detector->AuditUserStackWalk(ThreadCreate, PsGetCurrentProcessId(), threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
+		//
+		// Audit the caller's stack.
+		//
+		ImageFilter::detector->AuditUserStackWalk(ThreadCreate, PsGetCurrentProcessId(), threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
 
-	//
-	// Check if this is a remote operation.
-	//
-	ImageFilter::detector->AuditCallerProcessId(ThreadCreate, PsGetCurrentProcessId(), ProcessId, threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
+		//
+		// Check if this is a remote operation.
+		//
+		ImageFilter::detector->AuditCallerProcessId(ThreadCreate, PsGetCurrentProcessId(), ProcessId, threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
+	}
 Exit:
 	if (threadCreateStack != NULL)
 	{
@@ -1390,12 +1478,13 @@ ImageFilter::AddProcessThreadCount(
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++) {
+		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
+		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
 			if (ProcessId == currentProcessHistory->ProcessId &&
 				currentProcessHistory->ProcessTerminated == FALSE)
@@ -1412,7 +1501,7 @@ ImageFilter::AddProcessThreadCount(
 	//
 	// Release the lock.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 
 	return foundProcess;
 }
@@ -1444,12 +1533,13 @@ VOID ImageFilter::PopulateProcessSizes(
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++) {
+		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
+		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
 			if (ProcessSizesRequest->ProcessId == currentProcessHistory->ProcessId &&
 				ProcessSizesRequest->EpochExecutionTime == currentProcessHistory->EpochExecutionTime)
@@ -1465,7 +1555,7 @@ VOID ImageFilter::PopulateProcessSizes(
 	//
 	// Release the lock.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 }
 
 /**
@@ -1503,12 +1593,13 @@ VOID ImageFilter::PopulateImageDetailedRequest(
 	//
 	// Acquire a shared lock to iterate processes.
 	//
-	ExAcquireFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	AcquireProcessLock();
 
 	if (ImageFilter::ProcessHistory)
 	{
 		// Iterate through the array
-		for (ULONG64 processIndex = 0; processIndex < ImageFilter::ProcessHistorySize; processIndex++) {
+		for (ULONG64 processIndex = 0; processIndex < ImageFilter::ProcessHistorySize; processIndex++)
+		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
 			if (ImageDetailedRequest->ProcessId == currentProcessHistory->ProcessId &&
 				ImageDetailedRequest->EpochExecutionTime == currentProcessHistory->EpochExecutionTime)
@@ -1516,7 +1607,7 @@ VOID ImageFilter::PopulateImageDetailedRequest(
 				//
 				// Iterate the images for basic information.
 				//
-				FltAcquirePushLockShared(&currentProcessHistory->ImageLoadHistoryLock);
+				AcquireProcessLock();
 
 				//
 				// The head isn't an element so skip it.
@@ -1548,7 +1639,7 @@ VOID ImageFilter::PopulateImageDetailedRequest(
 					currentImageEntry = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(currentImageEntry->ListEntry.Flink);
 				}
 
-				FltReleasePushLock(&currentProcessHistory->ImageLoadHistoryLock);
+				ReleaseProcessLock();
 				break;
 			}
 			// Already advancing in the for loop
@@ -1558,5 +1649,5 @@ VOID ImageFilter::PopulateImageDetailedRequest(
 	//
 	// Release the lock.
 	//
-	ExReleaseFastMutex((PFAST_MUTEX)&ProcessHistoryLock);
+	ReleaseProcessLock();
 }
