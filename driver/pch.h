@@ -14,12 +14,19 @@
 
 // Tambahan header untuk C++
 #ifdef __cplusplus
-// PeaceMaker related headers
+// Core headers
 #include "common.h"
+#include "IOCTLShared.h"
+
+// Core components
 #include "DetectionLogic.h"
 #include "ImageFilter.h"
 #include "ObjectFilter.h"
 #include "AlertQueue.h"
 #include "StringFilters.h"
 #include "StackWalker.h"
+
+// Extension components - added these last to avoid circular dependencies
+#include "fixed_structures.h"
+#include "AlertQueueExtension.h"
 #endif

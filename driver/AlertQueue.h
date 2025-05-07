@@ -7,6 +7,7 @@
 #pragma once
 #include "common.h"
 #include "shared.h"
+#include "IOCTLShared.h" // Include IOCTL shared structures
 
 typedef class AlertQueue
 {
@@ -25,6 +26,17 @@ public:
 
 	PBASE_ALERT_INFO PopAlert (
 		VOID
+		);
+
+	/**
+	 * Pop multiple alerts from the queue
+	 * @param AlertBuffer Buffer to store the alerts
+	 * @param MaxAlerts Maximum number of alerts to retrieve
+	 * @return Number of alerts retrieved
+	 */
+	ULONG PopMultipleAlerts (
+		_Out_ PALERT_INFO AlertBuffer,
+		_In_ ULONG MaxAlerts
 		);
 
 	BOOLEAN IsQueueEmpty (

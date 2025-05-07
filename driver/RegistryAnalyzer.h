@@ -7,6 +7,7 @@
 #include "ObjectFilter.h"
 #include "ImageFilter.h"
 #include "registry_structures.h"
+#include "IOCTLShared.h" // Include IOCTL shared structures
 
 // Class definition with public interface
 class RegistryAnalyzer
@@ -106,6 +107,13 @@ public:
         _Out_ PUCHAR CSVBuffer,
         _In_ ULONG BufferSize,
         _Out_ PULONG ActualSize
+        );
+        
+    // Get recent registry activity events
+    NTSTATUS GetRecentRegistryEvents(
+        _Out_ PREGISTRY_ACTIVITY RegistryEvents,
+        _In_ ULONG MaxEvents,
+        _Out_ PULONG EventsReturned
         );
     
     // Cleanup old profiles

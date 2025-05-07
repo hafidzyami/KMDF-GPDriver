@@ -1416,6 +1416,116 @@ RegistryAnalyzer::ExportFeatureVectorsToCSVBuffer(
 }
 
 /**
+ * Get recent registry activity events
+ * @param RegistryEvents - Buffer to store registry events
+ * @param MaxEvents - Maximum number of events to retrieve
+ * @param EventsReturned - Actual number of events retrieved
+ * @return NTSTATUS value indicating success or failure
+ */
+NTSTATUS
+RegistryAnalyzer::GetRecentRegistryEvents(
+    _Out_ PREGISTRY_ACTIVITY RegistryEvents,
+    _In_ ULONG MaxEvents,
+    _Out_ PULONG EventsReturned
+    )
+{
+    PLIST_ENTRY profileEntry, eventEntry;
+    PPROCESS_REGISTRY_PROFILE profile;
+    PREGISTRY_EVENT_DATA eventData;
+    ULONG eventCount = 0;
+    LARGE_INTEGER currentTime;
+
+    // Get current time
+    KeQuerySystemTime(&currentTime);
+
+    // Initialize output parameter
+    *EventsReturned = 0;
+
+    // Validate parameters
+    if (!RegistryEvents || MaxEvents == 0) {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    // Acquire shared lock on profile list
+    FltAcquirePushLockShared(&ProcessProfileLock);
+
+    // Loop through all profiles to collect registry events
+    for (profileEntry = ProcessProfileListHead.Flink; 
+         profileEntry != &ProcessProfileListHead && eventCount < MaxEvents; 
+         profileEntry = profileEntry->Flink) {
+        
+        profile = CONTAINING_RECORD(profileEntry, PROCESS_REGISTRY_PROFILE, ListEntry);
+
+        // Skip profiles with no events
+        if (profile->EventCount == 0) {
+            continue;
+        }
+
+        // Acquire shared lock on event list
+        FltAcquirePushLockShared(&profile->EventLock);
+
+        // Loop through events in reverse order (newest first) up to MaxEvents
+        ULONG eventsFromThisProfile = 0;
+        for (eventEntry = profile->EventList.Blink; 
+             eventEntry != &profile->EventList && eventCount < MaxEvents && eventsFromThisProfile < 10; // Limit to 10 per process
+             eventEntry = eventEntry->Blink) {
+            
+            eventData = CONTAINING_RECORD(eventEntry, REGISTRY_EVENT_DATA, ListEntry);
+
+            // Convert to user-mode format
+            PREGISTRY_ACTIVITY currentEvent = &RegistryEvents[eventCount];
+
+            // Fill in basic info
+            currentEvent->ProcessId = HandleToUlong(eventData->ProcessId);
+            currentEvent->OperationType = eventData->OperationType;
+            currentEvent->Timestamp = eventData->Timestamp;
+
+            // Copy process name if available
+            if (eventData->ProcessName != NULL && eventData->ProcessName->Buffer != NULL) {
+                RtlCopyMemory(
+                    currentEvent->ProcessName, 
+                    eventData->ProcessName->Buffer, 
+                    min(sizeof(currentEvent->ProcessName) - sizeof(WCHAR), eventData->ProcessName->Length));
+                
+                // Ensure null termination
+                currentEvent->ProcessName[sizeof(currentEvent->ProcessName) / sizeof(WCHAR) - 1] = L'\0';
+            } else {
+                // If no process name, use a placeholder
+                RtlCopyMemory(currentEvent->ProcessName, L"Unknown", sizeof(L"Unknown"));
+            }
+
+            // Copy registry path if available
+            if (eventData->KeyPath != NULL && eventData->KeyPath->Buffer != NULL) {
+                RtlCopyMemory(
+                    currentEvent->RegistryPath, 
+                    eventData->KeyPath->Buffer, 
+                    min(sizeof(currentEvent->RegistryPath) - sizeof(WCHAR), eventData->KeyPath->Length));
+                
+                // Ensure null termination
+                currentEvent->RegistryPath[sizeof(currentEvent->RegistryPath) / sizeof(WCHAR) - 1] = L'\0';
+            } else {
+                // If no key path, leave empty
+                currentEvent->RegistryPath[0] = L'\0';
+            }
+
+            // Increment counters
+            eventCount++;
+            eventsFromThisProfile++;
+        }
+
+        // Release lock on event list
+        FltReleasePushLock(&profile->EventLock);
+    }
+
+    // Release lock on profile list
+    FltReleasePushLock(&ProcessProfileLock);
+
+    // Return the number of events collected
+    *EventsReturned = eventCount;
+    return STATUS_SUCCESS;
+}
+
+/**
     Reset all data in the registry analyzer.
 */
 VOID 

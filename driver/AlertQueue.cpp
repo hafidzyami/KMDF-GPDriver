@@ -119,6 +119,91 @@ AlertQueue::IsQueueEmpty (
 	return empty;
 }
 
+/**
+ * Pop multiple alerts from the queue
+ * @param AlertBuffer Buffer to store the alerts
+ * @param MaxAlerts Maximum number of alerts to retrieve
+ * @return Number of alerts retrieved
+ */
+ULONG
+AlertQueue::PopMultipleAlerts(
+	_Out_ PALERT_INFO AlertBuffer,
+	_In_ ULONG MaxAlerts
+	)
+{
+	if (this->destroying || AlertBuffer == NULL || MaxAlerts == 0)
+	{
+		return 0;
+	}
+
+	ULONG alertCount = 0;
+	PBASE_ALERT_INFO baseAlert;
+	KIRQL oldIrql;
+
+	// Acquire the lock once to check if we have any alerts
+	ExAcquireSpinLock(this->alertsLock, &oldIrql);
+	BOOLEAN isEmpty = IsListEmpty(RCAST<PLIST_ENTRY>(&this->alertsHead));
+	ExReleaseSpinLock(this->alertsLock, oldIrql);
+
+	// Process as many alerts as we can, up to MaxAlerts
+	while (!isEmpty && alertCount < MaxAlerts)
+	{
+		// Pop an alert from the queue
+		baseAlert = this->PopAlert();
+		if (baseAlert == NULL)
+		{
+			// No more alerts
+			break;
+		}
+
+		// Treat baseAlert as EXTENDED_BASE_ALERT_INFO for proper field access
+		// We'll work directly with baseAlert instead of converting to EXTENDED_BASE_ALERT_INFO
+
+		// Convert BASE_ALERT_INFO to ALERT_INFO structure for user mode
+		PALERT_INFO currentAlert = &AlertBuffer[alertCount];
+
+		// Fill in the alert info from the extended base alert
+		currentAlert->AlertId = alertCount + 1; // Assign incremental IDs
+		currentAlert->Type = (ALERT_TYPE)baseAlert->AlertType; // Use AlertType from BASE_ALERT_INFO
+		currentAlert->SourceProcessId = HandleToUlong(baseAlert->SourceId); // Use SourceId from BASE_ALERT_INFO
+		currentAlert->TargetProcessId = 0; // Default value
+		
+		// Set timestamp to current time if not available
+		LARGE_INTEGER currentTime;
+		KeQuerySystemTime(&currentTime);
+		currentAlert->Timestamp = currentTime;
+		
+		// Default value for violating address
+		currentAlert->ViolatingAddress = 0;
+
+		// Copy strings with proper bounds checking
+		if (baseAlert->SourcePath[0] != L'\0') {
+			RtlCopyMemory(currentAlert->SourcePath, 
+					  baseAlert->SourcePath, 
+					  min(sizeof(currentAlert->SourcePath), sizeof(baseAlert->SourcePath)));
+		}
+
+		if (baseAlert->TargetPath[0] != L'\0') {
+			RtlCopyMemory(currentAlert->TargetPath, 
+					  baseAlert->TargetPath, 
+					  min(sizeof(currentAlert->TargetPath), sizeof(baseAlert->TargetPath)));
+		}
+
+		// Free the base alert as we've copied it to the output buffer
+		this->FreeAlert(baseAlert);
+
+		// Increment our count
+		alertCount++;
+
+		// Check if there are more alerts
+		ExAcquireSpinLock(this->alertsLock, &oldIrql);
+		isEmpty = IsListEmpty(RCAST<PLIST_ENTRY>(&this->alertsHead));
+		ExReleaseSpinLock(this->alertsLock, oldIrql);
+	}
+
+	return alertCount;
+}
+
 
 /**
 	Free a previously pop'd alert.
