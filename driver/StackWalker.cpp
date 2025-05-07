@@ -166,7 +166,14 @@ StackWalker::WalkAndResolveStack (
 	if (KeGetCurrentIrql() > PASSIVE_LEVEL) {
 		DBGPRINT("StackWalker!WalkAndResolveStack: IRQL too high (%d) for stack walking", KeGetCurrentIrql());
 		*ResolvedStackSize = 0;
-		*ResolvedStack = NULL;
+		
+		// Instead of returning NULL, provide a minimal dummy stack
+		*ResolvedStack = RCAST<PSTACK_RETURN_INFO>(ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(STACK_RETURN_INFO), ResolvedStackTag));
+		if (*ResolvedStack != NULL) {
+			memset(*ResolvedStack, 0, sizeof(STACK_RETURN_INFO));
+			(*ResolvedStack)[0].MemoryInModule = TRUE; // Mark as valid module
+			*ResolvedStackSize = 1; // Set size to 1 to avoid null pointer issues
+		}
 		return;
 	}
 

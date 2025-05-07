@@ -1,42 +1,71 @@
+#pragma warning(suppress: 4996)
 #include "pch.h"
 #include "ImageFilter.h"
 
-// Static DPC variables for deferred processing
-static KDPC ImageNotificationDpc;
-static BOOLEAN DpcInitialized = FALSE;
-static PVOID DeferredImageName = NULL;
-static HANDLE DeferredProcessId = NULL;
-static PVOID DeferredImageInfo = NULL;
 
-// DPC routine for deferred image processing
-VOID DeferredImageNotifyRoutine(
-	_In_ PKDPC Dpc,
-	_In_opt_ PVOID DeferredContext,
-	_In_opt_ PVOID SystemArgument1,
-	_In_opt_ PVOID SystemArgument2)
+// Work item structure for deferred image load processing
+// Updated work item structure for IO work item pattern
+typedef struct _IMAGE_LOAD_WORK_ITEM {
+	union {
+		WORK_QUEUE_ITEM OldWorkItem;     // For backwards compatibility if needed
+		struct {
+			PIO_WORKITEM IoWorkItem;     // Pointer to IO work item
+			PVOID Reserved;              // For alignment with old structure
+		} IoWork;  // Add a name to the struct
+	} WorkItem;
+	UNICODE_STRING ImageName;
+	HANDLE ProcessId;
+	IMAGE_INFO ImageInfo;
+} IMAGE_LOAD_WORK_ITEM, * PIMAGE_LOAD_WORK_ITEM;
+
+// Work item routine for deferred image processing
+// Updated work item routine for IO work item pattern
+VOID
+ImageLoadWorkItemRoutine(
+    _In_ PVOID Context
+)
 {
-	UNREFERENCED_PARAMETER(Dpc);
-	UNREFERENCED_PARAMETER(DeferredContext);
-	UNREFERENCED_PARAMETER(SystemArgument1);
-	UNREFERENCED_PARAMETER(SystemArgument2);
+    PIMAGE_LOAD_WORK_ITEM workItem = (PIMAGE_LOAD_WORK_ITEM)Context;
+    
+    if (workItem != NULL)
+    {
+        // Now we're at PASSIVE_LEVEL, safe to process the image load
+        PUNICODE_STRING imageNamePtr = NULL;
+        
+        // Only pass the image name if it's valid
+        if (workItem->ImageName.Buffer != NULL && workItem->ImageName.Length > 0)
+        {
+            imageNamePtr = &workItem->ImageName;
+        }
 
-	// Process at PASSIVE_LEVEL
-	if (KeGetCurrentIrql() == PASSIVE_LEVEL)
-	{
-		if (DeferredImageName != NULL && DeferredProcessId != NULL)
-		{
-			// Process the image notification at PASSIVE_LEVEL
-			ImageFilter::LoadImageNotifyRoutine((PUNICODE_STRING)DeferredImageName, DeferredProcessId,
-												(PIMAGE_INFO)DeferredImageInfo);
+        // Safe check for null pointer before use
+        if (imageNamePtr != NULL) {
+            // Process the image notification at PASSIVE_LEVEL
+            ImageFilter::LoadImageNotifyRoutine(
+                imageNamePtr,
+                workItem->ProcessId,
+                &workItem->ImageInfo);
+        } else {
+            // Handle null pointer case safely
+            ImageFilter::LoadImageNotifyRoutine(
+                NULL,
+                workItem->ProcessId,
+                &workItem->ImageInfo);
+        }
 
-			// Clear the deferred parameters
-			DeferredImageName = NULL;
-			DeferredProcessId = NULL;
-			DeferredImageInfo = NULL;
-		}
-	}
+        // Free the image name buffer if it was allocated
+        if (workItem->ImageName.Buffer != NULL)
+        {
+            ExFreePoolWithTag(workItem->ImageName.Buffer, 'ILwI');
+        }
+        
+        // Free the work item
+        ExFreePoolWithTag(workItem, 'ILwI');
+    }
+    
+    // Terminate the system thread
+    PsTerminateSystemThread(STATUS_SUCCESS);
 }
-
 // Initialize static member variables
 StackWalker ImageFilter::walker;
 PROCESS_HISTORY_ENTRY *ImageFilter::ProcessHistory; // Array-based approach
@@ -133,12 +162,7 @@ ImageFilter::ImageFilter(
 		return;
 	}
 
-	// Initialize DPC for deferred image processing
-	if (!DpcInitialized)
-	{
-		KeInitializeDpc(&ImageNotificationDpc, DeferredImageNotifyRoutine, NULL);
-		DpcInitialized = TRUE;
-	}
+	// Work items don't require initialization at driver startup
 
 	*InitializeStatus = STATUS_SUCCESS;
 }
@@ -556,6 +580,9 @@ ImageFilter::GetImageLoadHistory(
 	{
 		RtlZeroMemory(ImageLoadInfoArray, MaxEntries * sizeof(IMAGE_LOAD_INFO));
 	}
+	else{
+		return 0;
+	}
 
 	PPROCESS_HISTORY_ENTRY currentProcessHistory;
 	PIMAGE_LOAD_HISTORY_ENTRY currentImageEntry = NULL;
@@ -855,183 +882,195 @@ typedef struct _IMAGE_INFO {
 } IMAGE_INFO, *PIMAGE_INFO;
 */
 VOID ImageFilter::LoadImageNotifyRoutine(
-	_In_ PUNICODE_STRING FullImageName,
-	_In_ HANDLE ProcessId,
-	_In_ PIMAGE_INFO ImageInfo)
+    _In_ PUNICODE_STRING FullImageName,
+    _In_ HANDLE ProcessId,
+    _In_ PIMAGE_INFO ImageInfo)
 {
-	NTSTATUS status;
-	PPROCESS_HISTORY_ENTRY currentProcessHistory;
-	PIMAGE_LOAD_HISTORY_ENTRY newImageLoadHistory;
+    NTSTATUS status;
+    PPROCESS_HISTORY_ENTRY currentProcessHistory;
+    PIMAGE_LOAD_HISTORY_ENTRY newImageLoadHistory;
 
-	UNREFERENCED_PARAMETER(ImageInfo);
+    UNREFERENCED_PARAMETER(ImageInfo);
 
-	currentProcessHistory = NULL;
-	newImageLoadHistory = NULL;
-	status = STATUS_SUCCESS;
+    currentProcessHistory = NULL;
+    newImageLoadHistory = NULL;
+    status = STATUS_SUCCESS;
 
-	if (ImageFilter::destroying)
-	{
-		return;
-	}
+    if (ImageFilter::destroying)
+    {
+        return;
+    }
 
-	// Check IRQL level - if above PASSIVE_LEVEL, queue a DPC for later processing
-	if (KeGetCurrentIrql() > PASSIVE_LEVEL)
-	{
-		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Deferring processing due to high IRQL (%d)", KeGetCurrentIrql());
+    // Check IRQL level - if above PASSIVE_LEVEL, use system thread instead of work items
+    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
+    {
+        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Deferring processing due to high IRQL (%d)", KeGetCurrentIrql());
 
-		// Store parameters for deferred processing
-		DeferredImageName = FullImageName;
-		DeferredProcessId = ProcessId;
-		DeferredImageInfo = ImageInfo;
+        // Allocate a context structure (safe at any IRQL from NonPagedPool)
+        PIMAGE_LOAD_WORK_ITEM workItem = (PIMAGE_LOAD_WORK_ITEM)
+            ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(IMAGE_LOAD_WORK_ITEM), 'ILwI');
 
-		// Queue the DPC to run later at PASSIVE_LEVEL
-		KeInsertQueueDpc(&ImageNotificationDpc, NULL, NULL);
-		return;
-	}
+        if (workItem != NULL)
+        {
+            // Initialize the context
+            RtlZeroMemory(workItem, sizeof(IMAGE_LOAD_WORK_ITEM));
+            
+            // Copy process ID and image info
+            workItem->ProcessId = ProcessId;
+            if (ImageInfo != NULL) {
+                RtlCopyMemory(&workItem->ImageInfo, ImageInfo, sizeof(IMAGE_INFO));
+            }
+            
+            // Copy image name if available
+            if (FullImageName != NULL && FullImageName->Buffer != NULL && FullImageName->Length > 0) {
+                workItem->ImageName.Buffer = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED,
+                                         FullImageName->Length + sizeof(WCHAR), 'ILwI');
+                
+                if (workItem->ImageName.Buffer != NULL) {
+                    RtlZeroMemory(workItem->ImageName.Buffer, FullImageName->Length + sizeof(WCHAR));
+                    RtlCopyMemory(workItem->ImageName.Buffer, FullImageName->Buffer, FullImageName->Length);
+                    workItem->ImageName.Length = FullImageName->Length;
+                    workItem->ImageName.MaximumLength = FullImageName->Length + sizeof(WCHAR);
+                }
+            }
+            
+            // Use KeExpandedSetSystemWorkItem instead of ExQueueWorkItem
+            HANDLE threadHandle;
+            OBJECT_ATTRIBUTES objAttribs;
+            
+            InitializeObjectAttributes(&objAttribs, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+            
+            // Create a system thread to process the work item
+            status = PsCreateSystemThread(
+                &threadHandle,
+                THREAD_ALL_ACCESS,
+                &objAttribs,
+                NULL,
+                NULL,
+                ImageLoadWorkItemRoutine,
+                workItem);
+                
+            if (!NT_SUCCESS(status)) {
+                // Clean up if thread creation failed
+                if (workItem->ImageName.Buffer != NULL) {
+                    ExFreePoolWithTag(workItem->ImageName.Buffer, 'ILwI');
+                }
+                ExFreePoolWithTag(workItem, 'ILwI');
+                DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to create system thread, status 0x%X", status);
+            } else {
+                // Close the thread handle since we don't need it
+                ZwClose(threadHandle);
+            }
+        }
+        return;
+    }
 
-	//
-	// Acquire a shared lock to iterate processes.
-	//
-	AcquireProcessLock();
+    // Rest of the function remains unchanged
+    AcquireProcessLock();
 
-	//
-	// Iterate histories for a match.
-	//
-	if (ImageFilter::ProcessHistory)
-	{
-		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
-		{
-			if (ImageFilter::ProcessHistory[i].ProcessId == ProcessId && ImageFilter::ProcessHistory[i].ProcessTerminated == FALSE)
-			{
-				currentProcessHistory = &ImageFilter::ProcessHistory[i];
-				break;
-			}
-		}
-	}
+    if (ImageFilter::ProcessHistory)
+    {
+        for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
+        {
+            if (ImageFilter::ProcessHistory[i].ProcessId == ProcessId && ImageFilter::ProcessHistory[i].ProcessTerminated == FALSE)
+            {
+                currentProcessHistory = &ImageFilter::ProcessHistory[i];
+                break;
+            }
+        }
+    }
 
-	//
-	// This might happen if we load on a running machine that already has processes.
-	//
-	if (currentProcessHistory == NULL)
-	{
-		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to find PID %p in history.", ProcessId);
-		status = STATUS_NOT_FOUND;
-		goto Exit;
-	}
+    if (currentProcessHistory == NULL)
+    {
+        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to find PID %p in history.", ProcessId);
+        status = STATUS_NOT_FOUND;
+        goto Exit;
+    }
 
-	//
-	// Allocate space for the new image history entry.
-	//
-	newImageLoadHistory = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(IMAGE_LOAD_HISTORY_ENTRY), IMAGE_HISTORY_TAG));
-	if (newImageLoadHistory == NULL)
-	{
-		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the image history entry.");
-		status = STATUS_NO_MEMORY;
-		goto Exit;
-	}
-	memset(newImageLoadHistory, 0, sizeof(IMAGE_LOAD_HISTORY_ENTRY));
+    newImageLoadHistory = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(IMAGE_LOAD_HISTORY_ENTRY), IMAGE_HISTORY_TAG));
+    if (newImageLoadHistory == NULL)
+    {
+        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the image history entry.");
+        status = STATUS_NO_MEMORY;
+        goto Exit;
+    }
+    memset(newImageLoadHistory, 0, sizeof(IMAGE_LOAD_HISTORY_ENTRY));
 
-	newImageLoadHistory->CallerProcessId = PsGetCurrentProcessId();
-	if (PsGetCurrentProcessId() != ProcessId)
-	{
-		newImageLoadHistory->RemoteImage = TRUE;
-		ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &newImageLoadHistory->CallerImageFileName);
-	}
+    newImageLoadHistory->CallerProcessId = PsGetCurrentProcessId();
+    if (PsGetCurrentProcessId() != ProcessId)
+    {
+        newImageLoadHistory->RemoteImage = TRUE;
+        ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &newImageLoadHistory->CallerImageFileName);
+    }
 
-	//
-	// Copy the image file name if it is provided.
-	//
-	if (FullImageName)
-	{
-		//
-		// Allocate the copy buffer. FullImageName will not be valid forever.
-		//
-		newImageLoadHistory->ImageFileName.Buffer = RCAST<PWCH>(ExAllocatePool2(POOL_FLAG_PAGED, SCAST<SIZE_T>(FullImageName->Length) + 2, IMAGE_NAME_TAG));
-		if (newImageLoadHistory->ImageFileName.Buffer == NULL)
-		{
-			DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the image file name.");
-			status = STATUS_NO_MEMORY;
-			goto Exit;
-		}
+    if (FullImageName)
+    {
+        newImageLoadHistory->ImageFileName.Buffer = RCAST<PWCH>(ExAllocatePool2(POOL_FLAG_PAGED, SCAST<SIZE_T>(FullImageName->Length) + 2, IMAGE_NAME_TAG));
+        if (newImageLoadHistory->ImageFileName.Buffer == NULL)
+        {
+            DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the image file name.");
+            status = STATUS_NO_MEMORY;
+            goto Exit;
+        }
 
-		newImageLoadHistory->ImageFileName.Length = SCAST<SIZE_T>(FullImageName->Length) + 2;
-		newImageLoadHistory->ImageFileName.MaximumLength = SCAST<SIZE_T>(FullImageName->Length) + 2;
+        newImageLoadHistory->ImageFileName.Length = SCAST<SIZE_T>(FullImageName->Length) + 2;
+        newImageLoadHistory->ImageFileName.MaximumLength = SCAST<SIZE_T>(FullImageName->Length) + 2;
 
-		//
-		// Copy the image name.
-		//
-		status = RtlStringCbCopyUnicodeString(newImageLoadHistory->ImageFileName.Buffer, SCAST<SIZE_T>(FullImageName->Length) + 2, FullImageName);
-		if (NT_SUCCESS(status) == FALSE)
-		{
-			DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to copy the image file name with status 0x%X. Destination size = 0x%X, Source Size = 0x%X.",
-					 status,
-					 (unsigned int)(SCAST<SIZE_T>(FullImageName->Length) + 2),
-					 (unsigned int)(SCAST<SIZE_T>(FullImageName->Length)));
+        status = RtlStringCbCopyUnicodeString(newImageLoadHistory->ImageFileName.Buffer, SCAST<SIZE_T>(FullImageName->Length) + 2, FullImageName);
+        if (NT_SUCCESS(status) == FALSE)
+        {
+            DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to copy the image file name with status 0x%X. Destination size = 0x%X, Source Size = 0x%X.",
+                     status,
+                     (unsigned int)(SCAST<SIZE_T>(FullImageName->Length) + 2),
+                     (unsigned int)(SCAST<SIZE_T>(FullImageName->Length)));
 
-			goto Exit;
-		}
-	}
+            goto Exit;
+        }
+    }
 
-	//
-	// Grab the user-mode stack.
-	//
-	newImageLoadHistory->CallerStackHistorySize = MAX_STACK_RETURN_HISTORY; // Will be updated in the resolve function.
-	walker.WalkAndResolveStack(&newImageLoadHistory->CallerStackHistory, &newImageLoadHistory->CallerStackHistorySize, STACK_HISTORY_TAG);
-	// Don't fail if we can't get stack info, just continue without it
-	if (newImageLoadHistory->CallerStackHistory == NULL)
-	{
-		DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the stack history - continuing without stack info.");
-		newImageLoadHistory->CallerStackHistorySize = 0;
-	}
+    newImageLoadHistory->CallerStackHistorySize = MAX_STACK_RETURN_HISTORY;
+    walker.WalkAndResolveStack(&newImageLoadHistory->CallerStackHistory, &newImageLoadHistory->CallerStackHistorySize, STACK_HISTORY_TAG);
+    if (newImageLoadHistory->CallerStackHistory == NULL)
+    {
+        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the stack history - continuing without stack info.");
+        newImageLoadHistory->CallerStackHistorySize = 0;
+    }
 
-	// Use process lock instead for simplicity
-	AcquireProcessLock();
+    AcquireProcessLock();
 
-	InsertHeadList(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory), RCAST<PLIST_ENTRY>(newImageLoadHistory));
-	currentProcessHistory->ImageLoadHistorySize++;
+    InsertHeadList(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory), RCAST<PLIST_ENTRY>(newImageLoadHistory));
+    currentProcessHistory->ImageLoadHistorySize++;
 
-	// Release process lock
-	ReleaseProcessLock();
+    ReleaseProcessLock();
 
-	//
-	// Audit the stack.
-	//
-	if (newImageLoadHistory->CallerStackHistory != NULL && newImageLoadHistory->CallerStackHistorySize > 0)
-	{
-		ImageFilter::detector->AuditUserStackWalk(ImageLoad,
-												  PsGetCurrentProcessId(),
-												  currentProcessHistory->ProcessImageFileName,
-												  &newImageLoadHistory->ImageFileName,
-												  newImageLoadHistory->CallerStackHistory,
-												  newImageLoadHistory->CallerStackHistorySize);
-	}
+    if (newImageLoadHistory->CallerStackHistory != NULL && newImageLoadHistory->CallerStackHistorySize > 0)
+    {
+        ImageFilter::detector->AuditUserStackWalk(ImageLoad,
+                                              PsGetCurrentProcessId(),
+                                              currentProcessHistory->ProcessImageFileName,
+                                              &newImageLoadHistory->ImageFileName,
+                                              newImageLoadHistory->CallerStackHistory,
+                                              newImageLoadHistory->CallerStackHistorySize);
+    }
 Exit:
-	//
-	// Release the lock.
-	//
-	ReleaseProcessLock();
+    ReleaseProcessLock();
 
-	//
-	// Clean up on failure.
-	//
-	if (newImageLoadHistory && NT_SUCCESS(status) == FALSE)
-	{
-		if (newImageLoadHistory->ImageFileName.Buffer)
-		{
-			ExFreePoolWithTag(newImageLoadHistory->ImageFileName.Buffer, IMAGE_NAME_TAG);
-			DBGPRINT("Free'd 'PmIn' at %p.", newImageLoadHistory->ImageFileName.Buffer);
-		}
-		if (newImageLoadHistory->CallerStackHistory)
-		{
-			ExFreePoolWithTag(newImageLoadHistory->CallerStackHistory, STACK_HISTORY_TAG);
-			DBGPRINT("Free'd 'PmSh' at %p.", newImageLoadHistory->CallerStackHistory);
-		}
-		ExFreePoolWithTag(newImageLoadHistory, IMAGE_HISTORY_TAG);
-		DBGPRINT("Free'd 'PmIh' at %p.", newImageLoadHistory);
-	}
+    if (newImageLoadHistory && NT_SUCCESS(status) == FALSE)
+    {
+        if (newImageLoadHistory->ImageFileName.Buffer)
+        {
+            ExFreePoolWithTag(newImageLoadHistory->ImageFileName.Buffer, IMAGE_NAME_TAG);
+            DBGPRINT("Free'd 'PmIn' at %p.", newImageLoadHistory->ImageFileName.Buffer);
+        }
+        if (newImageLoadHistory->CallerStackHistory)
+        {
+            ExFreePoolWithTag(newImageLoadHistory->CallerStackHistory, STACK_HISTORY_TAG);
+            DBGPRINT("Free'd 'PmSh' at %p.", newImageLoadHistory->CallerStackHistory);
+        }
+        ExFreePoolWithTag(newImageLoadHistory, IMAGE_HISTORY_TAG);
+        DBGPRINT("Free'd 'PmIh' at %p.", newImageLoadHistory);
+    }
 }
-
 /**
 	Get the summary for MaxProcessSummaries processes starting from the top of list + SkipCount.
 	@param SkipCount - How many processes to skip in the list.
