@@ -12,21 +12,25 @@ typedef struct _IMAGE_LOAD_WORK_ITEM {
     BOOLEAN RemoteImage;             // Added to track if this was a remote load
 } IMAGE_LOAD_WORK_ITEM, *PIMAGE_LOAD_WORK_ITEM;
 
-typedef struct _THREAD_CREATE_WORK_ITEM {
-    HANDLE ProcessId;
-    HANDLE ThreadId;
-    HANDLE CallerProcessId;
-} THREAD_CREATE_WORK_ITEM, *PTHREAD_CREATE_WORK_ITEM;
+typedef struct _THREAD_CREATE_NOTIFY_WORKITEM {
+    WORK_QUEUE_ITEM WorkItem;     // Must be first field for ExQueueWorkItem
+    HANDLE ProcessId;             // Target process ID
+    HANDLE ThreadId;              // New thread ID
+    HANDLE CallerProcessId;       // Process that created the thread
+} THREAD_CREATE_NOTIFY_WORKITEM, *PTHREAD_CREATE_NOTIFY_WORKITEM;
 
-VOID
-ThreadCreateWorkItemRoutine(
+/**
+    Work item routine to process thread creation notifications at PASSIVE_LEVEL.
+    @param Context - Pointer to a THREAD_CREATE_NOTIFY_WORKITEM structure.
+*/
+VOID 
+ThreadCreateNotifyWorkItemRoutine(
     _In_ PVOID Context
 )
 {
-    PTHREAD_CREATE_WORK_ITEM workItem = (PTHREAD_CREATE_WORK_ITEM)Context;
+    PTHREAD_CREATE_NOTIFY_WORKITEM workItem = (PTHREAD_CREATE_NOTIFY_WORKITEM)Context;
     
     // Initialize all variables to prevent uninitialized memory warnings
-    ULONG processThreadCount = 0;
     PVOID threadStartAddress = NULL;
     PSTACK_RETURN_INFO threadCreateStack = NULL;
     ULONG threadCreateStackSize = 64;
@@ -35,31 +39,24 @@ ThreadCreateWorkItemRoutine(
     
     if (workItem == NULL)
     {
-        goto Exit;
+        return;
     }
 
-    // If we can't find the process or it's the first thread of the process, skip it
-    if (ImageFilter::AddProcessThreadCount(workItem->ProcessId, &processThreadCount) == FALSE ||
-        processThreadCount <= 1)
-    {
-        goto Exit;
-    }
-
-    // Now that we're at PASSIVE_LEVEL, we can safely walk the stack
+    // At PASSIVE_LEVEL, we can safely walk the stack
     threadCreateStackSize = 64;
     ImageFilter::walker.WalkAndResolveStack(&threadCreateStack, &threadCreateStackSize, STACK_HISTORY_TAG);
     
     // Make sure we successfully got a stack before using it
     if (threadCreateStack == NULL || threadCreateStackSize == 0)
     {
-        DBGPRINT("ThreadCreateWorkItemRoutine: Failed to walk stack");
+        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to walk stack");
         goto Exit;
     }
 
     // Grab the name of the caller
     if (ImageFilter::GetProcessImageFileName(workItem->CallerProcessId, &threadCallerName) == FALSE || threadCallerName == NULL)
     {
-        DBGPRINT("ThreadCreateWorkItemRoutine: Failed to get caller process name");
+        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to get caller process name");
         goto Exit;
     }
 
@@ -72,7 +69,7 @@ ThreadCreateWorkItemRoutine(
         // Grab the name of the target
         if (ImageFilter::GetProcessImageFileName(workItem->ProcessId, &threadTargetName) == FALSE || threadTargetName == NULL)
         {
-            DBGPRINT("ThreadCreateWorkItemRoutine: Failed to get target process name");
+            DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to get target process name");
             goto Exit;
         }
     }
@@ -85,21 +82,35 @@ ThreadCreateWorkItemRoutine(
     // Grab the start address of the thread
     threadStartAddress = ImageFilter::GetThreadStartAddress(workItem->ThreadId);
 
-    // Audit the thread creation with the stack information we collected
-    // Ensure all pointers are valid before using them
+    // Perform the security audits with the stack information we collected
     if (threadCreateStack != NULL && threadCreateStackSize > 0 && 
         threadCallerName != NULL && threadTargetName != NULL)
     {
-        // We'll use AuditUserStackWalk for threads too, since AuditThreadCreate doesn't exist
-        // Make sure all parameters are properly initialized and not NULL
-        PUNICODE_STRING parentName = NULL; // Third parameter should be parent name or NULL
-        
+        // Audit the target's start address
+        ImageFilter::detector->AuditUserPointer(ThreadCreate, 
+                                              threadStartAddress, 
+                                              workItem->CallerProcessId, 
+                                              threadCallerName, 
+                                              threadTargetName, 
+                                              threadCreateStack, 
+                                              threadCreateStackSize);
+
+        // Audit the stack
         ImageFilter::detector->AuditUserStackWalk(ThreadCreate,
                                                 workItem->ProcessId,
-                                                parentName,  // Properly pass NULL for parent name
+                                                NULL,  // Parent name
                                                 threadTargetName,
                                                 threadCreateStack,
                                                 threadCreateStackSize);
+
+        // Check if this is a remote operation
+        ImageFilter::detector->AuditCallerProcessId(ThreadCreate, 
+                                                  workItem->CallerProcessId, 
+                                                  workItem->ProcessId, 
+                                                  threadCallerName, 
+                                                  threadTargetName, 
+                                                  threadCreateStack, 
+                                                  threadCreateStackSize);
     }
 
 Exit:
@@ -120,14 +131,11 @@ Exit:
         ExFreePoolWithTag(threadTargetName, IMAGE_NAME_TAG);
     }
     
-    if (workItem != NULL)
-    {
-        ExFreePoolWithTag(workItem, 'ThWI');
-    }
-    
-    // Terminate the system thread
-    PsTerminateSystemThread(STATUS_SUCCESS);
+    // Free the work item
+    ExFreePoolWithTag(workItem, 'ThWI');
 }
+
+
 // Work item routine for deferred image processing
 VOID
 ImageLoadWorkItemRoutine(
@@ -1494,40 +1502,42 @@ Exit:
 }
 
 /**
-	Called when a new thread is created. Ensure the thread is legit.
-	@param ProcessId - The process ID of the process receiving the new thread.
-	@param ThreadId - The thread ID of the new thread.
-	@param Create - Whether or not this is termination of a thread or creation.
+    Called when a new thread is created. Ensure the thread is legit.
+    @param ProcessId - The process ID of the process receiving the new thread.
+    @param ThreadId - The thread ID of the new thread.
+    @param Create - Whether or not this is termination of a thread or creation.
 */
-
 VOID ImageFilter::ThreadNotifyRoutine(
     _In_ HANDLE ProcessId,
     _In_ HANDLE ThreadId,
     _In_ BOOLEAN Create)
 {
-    // We don't really care about thread termination or if the thread is kernel-mode
-    if (Create == FALSE || ExGetPreviousMode() == KernelMode)
-    {
-        return;
-    }
-
-    // Skip if we're shutting down
-    if (ImageFilter::destroying)
-    {
-        return;
-    }
-
-    // Skip at high IRQL completely
+    // Skip at high IRQL
     if (KeGetCurrentIrql() > PASSIVE_LEVEL)
     {
         DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
         return;
     }
 
-    // Create a work item to handle thread creation at PASSIVE_LEVEL
-    PTHREAD_CREATE_WORK_ITEM workItem = (PTHREAD_CREATE_WORK_ITEM)ExAllocatePool2(
+    // We don't care about thread termination or kernel-mode threads
+    if (Create == FALSE || ExGetPreviousMode() == KernelMode)
+    {
+        return;
+    }
+
+    ULONG processThreadCount = 0;
+    
+    // If we can't find the process or it's the first thread of the process, skip it
+    if (ImageFilter::AddProcessThreadCount(ProcessId, &processThreadCount) == FALSE ||
+        processThreadCount <= 1)
+    {
+        return;
+    }
+
+    // Instead of creating a system thread, use a work item which is safer
+    PTHREAD_CREATE_NOTIFY_WORKITEM workItem = (PTHREAD_CREATE_NOTIFY_WORKITEM)ExAllocatePool2(
         POOL_FLAG_NON_PAGED,
-        sizeof(THREAD_CREATE_WORK_ITEM),
+        sizeof(THREAD_CREATE_NOTIFY_WORKITEM),
         'ThWI');
 
     if (workItem == NULL)
@@ -1537,37 +1547,18 @@ VOID ImageFilter::ThreadNotifyRoutine(
     }
 
     // Initialize work item
-    memset(workItem, 0, sizeof(THREAD_CREATE_WORK_ITEM));
     workItem->ProcessId = ProcessId;
     workItem->ThreadId = ThreadId;
     workItem->CallerProcessId = PsGetCurrentProcessId();
-    
-    // Modern way to create and queue a system worker thread
-    HANDLE threadHandle;
-    OBJECT_ATTRIBUTES objAttr;
-    
-    InitializeObjectAttributes(&objAttr, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
-    
-    NTSTATUS status = PsCreateSystemThread(
-        &threadHandle,
-        THREAD_ALL_ACCESS,
-        &objAttr,
-        NULL,
-        NULL,
-        ThreadCreateWorkItemRoutine,
-        workItem);
-        
-    if (!NT_SUCCESS(status))
-    {
-        DBGPRINT("ImageFilter!ThreadNotifyRoutine: Failed to create system thread with status 0x%X", status);
-        
-        // Free resources
-        ExFreePoolWithTag(workItem, 'ThWI');
-        return;
-    }
-    
-    // Close the thread handle since we don't need it
-    ZwClose(threadHandle);
+
+    // Initialize the work queue item
+    ExInitializeWorkItem(&workItem->WorkItem, 
+                        ThreadCreateNotifyWorkItemRoutine, 
+                        workItem);
+
+    // Queue the work item to process this notification at PASSIVE_LEVEL
+    // without recursively calling the notification routine
+    ExQueueWorkItem(&workItem->WorkItem, DelayedWorkQueue);
 }
 
 /**
