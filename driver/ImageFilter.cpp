@@ -2,18 +2,133 @@
 #include "pch.h"
 #include "ImageFilter.h"
 
-
 // Work item structure for deferred image load processing
-// Updated work item structure for IO work item pattern
 typedef struct _IMAGE_LOAD_WORK_ITEM {
     WORK_QUEUE_ITEM WorkQueueItem;  // Must be first field for proper casting
     UNICODE_STRING ImageName;
     HANDLE ProcessId;
     IMAGE_INFO ImageInfo;
+    HANDLE CallerProcessId;          // Added to track which process loaded the image
+    BOOLEAN RemoteImage;             // Added to track if this was a remote load
 } IMAGE_LOAD_WORK_ITEM, *PIMAGE_LOAD_WORK_ITEM;
 
+typedef struct _THREAD_CREATE_WORK_ITEM {
+    HANDLE ProcessId;
+    HANDLE ThreadId;
+    HANDLE CallerProcessId;
+} THREAD_CREATE_WORK_ITEM, *PTHREAD_CREATE_WORK_ITEM;
+
+VOID
+ThreadCreateWorkItemRoutine(
+    _In_ PVOID Context
+)
+{
+    PTHREAD_CREATE_WORK_ITEM workItem = (PTHREAD_CREATE_WORK_ITEM)Context;
+    
+    // Initialize all variables to prevent uninitialized memory warnings
+    ULONG processThreadCount = 0;
+    PVOID threadStartAddress = NULL;
+    PSTACK_RETURN_INFO threadCreateStack = NULL;
+    ULONG threadCreateStackSize = 64;
+    PUNICODE_STRING threadCallerName = NULL;
+    PUNICODE_STRING threadTargetName = NULL;
+    
+    if (workItem == NULL)
+    {
+        goto Exit;
+    }
+
+    // If we can't find the process or it's the first thread of the process, skip it
+    if (ImageFilter::AddProcessThreadCount(workItem->ProcessId, &processThreadCount) == FALSE ||
+        processThreadCount <= 1)
+    {
+        goto Exit;
+    }
+
+    // Now that we're at PASSIVE_LEVEL, we can safely walk the stack
+    threadCreateStackSize = 64;
+    ImageFilter::walker.WalkAndResolveStack(&threadCreateStack, &threadCreateStackSize, STACK_HISTORY_TAG);
+    
+    // Make sure we successfully got a stack before using it
+    if (threadCreateStack == NULL || threadCreateStackSize == 0)
+    {
+        DBGPRINT("ThreadCreateWorkItemRoutine: Failed to walk stack");
+        goto Exit;
+    }
+
+    // Grab the name of the caller
+    if (ImageFilter::GetProcessImageFileName(workItem->CallerProcessId, &threadCallerName) == FALSE || threadCallerName == NULL)
+    {
+        DBGPRINT("ThreadCreateWorkItemRoutine: Failed to get caller process name");
+        goto Exit;
+    }
+
+    // Initialize target name to NULL until we successfully get it
+    threadTargetName = NULL;
+
+    // We only need to resolve again if the target process is different than the caller
+    if (workItem->CallerProcessId != workItem->ProcessId)
+    {
+        // Grab the name of the target
+        if (ImageFilter::GetProcessImageFileName(workItem->ProcessId, &threadTargetName) == FALSE || threadTargetName == NULL)
+        {
+            DBGPRINT("ThreadCreateWorkItemRoutine: Failed to get target process name");
+            goto Exit;
+        }
+    }
+    else
+    {
+        // If caller and target are same, use the same name for both
+        threadTargetName = threadCallerName;
+    }
+
+    // Grab the start address of the thread
+    threadStartAddress = ImageFilter::GetThreadStartAddress(workItem->ThreadId);
+
+    // Audit the thread creation with the stack information we collected
+    // Ensure all pointers are valid before using them
+    if (threadCreateStack != NULL && threadCreateStackSize > 0 && 
+        threadCallerName != NULL && threadTargetName != NULL)
+    {
+        // We'll use AuditUserStackWalk for threads too, since AuditThreadCreate doesn't exist
+        // Make sure all parameters are properly initialized and not NULL
+        PUNICODE_STRING parentName = NULL; // Third parameter should be parent name or NULL
+        
+        ImageFilter::detector->AuditUserStackWalk(ThreadCreate,
+                                                workItem->ProcessId,
+                                                parentName,  // Properly pass NULL for parent name
+                                                threadTargetName,
+                                                threadCreateStack,
+                                                threadCreateStackSize);
+    }
+
+Exit:
+    // Free resources
+    if (threadCreateStack != NULL)
+    {
+        ExFreePoolWithTag(threadCreateStack, STACK_HISTORY_TAG);
+    }
+    
+    if (threadCallerName != NULL)
+    {
+        ExFreePoolWithTag(threadCallerName, IMAGE_NAME_TAG);
+    }
+    
+    // Only free target name if it's different from caller name
+    if (threadCallerName != threadTargetName && threadTargetName != NULL)
+    {
+        ExFreePoolWithTag(threadTargetName, IMAGE_NAME_TAG);
+    }
+    
+    if (workItem != NULL)
+    {
+        ExFreePoolWithTag(workItem, 'ThWI');
+    }
+    
+    // Terminate the system thread
+    PsTerminateSystemThread(STATUS_SUCCESS);
+}
 // Work item routine for deferred image processing
-// Updated work item routine for IO work item pattern
 VOID
 ImageLoadWorkItemRoutine(
     _In_ PVOID Context
@@ -23,30 +138,133 @@ ImageLoadWorkItemRoutine(
     
     if (workItem != NULL)
     {
-        // Now we're at PASSIVE_LEVEL, safe to process the image load
-        PUNICODE_STRING imageNamePtr = NULL;
+        // Create a new image history entry at PASSIVE_LEVEL
+        PIMAGE_LOAD_HISTORY_ENTRY newImageLoadHistory = NULL;
+        PPROCESS_HISTORY_ENTRY currentProcessHistory = NULL;
+        NTSTATUS status = STATUS_SUCCESS;
         
-        // Only pass the image name if it's valid
-        if (workItem->ImageName.Buffer != NULL && workItem->ImageName.Length > 0)
+        // Find the process in our history
+        KeAcquireSpinLock(&ImageFilter::ProcessHistoryLock, &ImageFilter::ProcessHistoryOldIrql);
+        
+        if (ImageFilter::ProcessHistory)
         {
-            imageNamePtr = &workItem->ImageName;
+            for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
+            {
+                if (ImageFilter::ProcessHistory[i].ProcessId == workItem->ProcessId && 
+                    ImageFilter::ProcessHistory[i].ProcessTerminated == FALSE)
+                {
+                    currentProcessHistory = &ImageFilter::ProcessHistory[i];
+                    break;
+                }
+            }
         }
-
-        // Safe check for null pointer before use
-        if (imageNamePtr != NULL) {
-            // Process the image notification at PASSIVE_LEVEL
-            ImageFilter::LoadImageNotifyRoutine(
-                imageNamePtr,
-                workItem->ProcessId,
-                &workItem->ImageInfo);
-        } else {
-            // Handle null pointer case safely
-            ImageFilter::LoadImageNotifyRoutine(
-                NULL,
-                workItem->ProcessId,
-                &workItem->ImageInfo);
+        
+        KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
+        
+        if (currentProcessHistory == NULL)
+        {
+            DBGPRINT("ImageLoadWorkItemRoutine: Failed to find PID %p in history.", workItem->ProcessId);
+            goto Cleanup;
         }
-
+        
+        // Allocate new image history entry
+        newImageLoadHistory = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, 
+                                                              sizeof(IMAGE_LOAD_HISTORY_ENTRY), 
+                                                              IMAGE_HISTORY_TAG));
+        if (newImageLoadHistory == NULL)
+        {
+            DBGPRINT("ImageLoadWorkItemRoutine: Failed to allocate space for image history entry.");
+            goto Cleanup;
+        }
+        memset(newImageLoadHistory, 0, sizeof(IMAGE_LOAD_HISTORY_ENTRY));
+        
+        // Fill in image information
+        newImageLoadHistory->CallerProcessId = workItem->CallerProcessId;
+        newImageLoadHistory->RemoteImage = workItem->RemoteImage;
+        
+        if (workItem->CallerProcessId != workItem->ProcessId)
+        {
+            ImageFilter::GetProcessImageFileName(workItem->CallerProcessId, 
+                                               &newImageLoadHistory->CallerImageFileName);
+        }
+        
+        // Copy image name if available
+        if (workItem->ImageName.Buffer && workItem->ImageName.Length > 0)
+        {
+            newImageLoadHistory->ImageFileName.Buffer = RCAST<PWCH>(ExAllocatePool2(POOL_FLAG_PAGED, 
+                                                                  SCAST<SIZE_T>(workItem->ImageName.Length) + 2, 
+                                                                  IMAGE_NAME_TAG));
+            if (newImageLoadHistory->ImageFileName.Buffer == NULL)
+            {
+                DBGPRINT("ImageLoadWorkItemRoutine: Failed to allocate space for image file name.");
+                goto Cleanup;
+            }
+            
+            newImageLoadHistory->ImageFileName.Length = SCAST<SIZE_T>(workItem->ImageName.Length);
+            newImageLoadHistory->ImageFileName.MaximumLength = SCAST<SIZE_T>(workItem->ImageName.Length) + 2;
+            
+            status = RtlStringCbCopyUnicodeString(newImageLoadHistory->ImageFileName.Buffer, 
+                                                 SCAST<SIZE_T>(workItem->ImageName.Length) + 2, 
+                                                 &workItem->ImageName);
+            if (NT_SUCCESS(status) == FALSE)
+            {
+                DBGPRINT("ImageLoadWorkItemRoutine: Failed to copy image file name.");
+                goto Cleanup;
+            }
+        }
+        
+        // Now we're at PASSIVE_LEVEL, we can safely walk the stack
+        newImageLoadHistory->CallerStackHistorySize = MAX_STACK_RETURN_HISTORY;
+        ImageFilter::walker.WalkAndResolveStack(&newImageLoadHistory->CallerStackHistory, 
+                                              &newImageLoadHistory->CallerStackHistorySize, 
+                                              STACK_HISTORY_TAG);
+        
+        // Add to the process history
+        KeAcquireSpinLock(&ImageFilter::ProcessHistoryLock, &ImageFilter::ProcessHistoryOldIrql);
+        
+        InsertHeadList(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory), 
+                      RCAST<PLIST_ENTRY>(newImageLoadHistory));
+        currentProcessHistory->ImageLoadHistorySize++;
+        
+        KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
+        
+        // Audit the stack if we have one
+        if (newImageLoadHistory->CallerStackHistory != NULL && 
+            newImageLoadHistory->CallerStackHistorySize > 0)
+        {
+            ImageFilter::detector->AuditUserStackWalk(ImageLoad,
+                                                    workItem->ProcessId,
+                                                    NULL,
+                                                    &newImageLoadHistory->ImageFileName,
+                                                    newImageLoadHistory->CallerStackHistory,
+                                                    newImageLoadHistory->CallerStackHistorySize);
+        }
+        
+        // Successful completion, don't free the new entry
+        newImageLoadHistory = NULL;
+        
+Cleanup:
+        // Free resources if something failed
+        if (newImageLoadHistory != NULL)
+        {
+            if (newImageLoadHistory->ImageFileName.Buffer != NULL)
+            {
+                ExFreePoolWithTag(newImageLoadHistory->ImageFileName.Buffer, IMAGE_NAME_TAG);
+            }
+            
+            if (newImageLoadHistory->CallerStackHistory != NULL)
+            {
+                ExFreePoolWithTag(newImageLoadHistory->CallerStackHistory, STACK_HISTORY_TAG);
+            }
+            
+            if (newImageLoadHistory->CallerImageFileName != NULL)
+            {
+                ExFreePoolWithTag(newImageLoadHistory->CallerImageFileName, IMAGE_NAME_TAG);
+            }
+            
+            ExFreePoolWithTag(newImageLoadHistory, IMAGE_HISTORY_TAG);
+        }
+        
         // Free the image name buffer if it was allocated
         if (workItem->ImageName.Buffer != NULL)
         {
@@ -60,6 +278,7 @@ ImageLoadWorkItemRoutine(
     // Terminate the system thread
     PsTerminateSystemThread(STATUS_SUCCESS);
 }
+
 // Initialize static member variables
 StackWalker ImageFilter::walker;
 PROCESS_HISTORY_ENTRY *ImageFilter::ProcessHistory; // Array-based approach
@@ -565,192 +784,189 @@ VOID ImageFilter::CreateProcessNotifyRoutine(
  */
 ULONG
 ImageFilter::GetImageLoadHistory(
-	_In_ HANDLE ProcessId,
-	_Out_ PIMAGE_LOAD_INFO ImageLoadInfoArray,
-	_In_ ULONG MaxEntries)
+    _In_ HANDLE ProcessId,
+    _Out_ PIMAGE_LOAD_INFO ImageLoadInfoArray,
+    _In_ ULONG MaxEntries)
 {
-	// Initialize the output array to all zeros
-	if (ImageLoadInfoArray != NULL && MaxEntries > 0)
-	{
-		RtlZeroMemory(ImageLoadInfoArray, MaxEntries * sizeof(IMAGE_LOAD_INFO));
-	}
-	else{
-		return 0;
-	}
+    // Validate input parameters
+    if (ImageLoadInfoArray == NULL || MaxEntries == 0)
+    {
+        return 0;
+    }
 
-	PPROCESS_HISTORY_ENTRY currentProcessHistory;
-	PIMAGE_LOAD_HISTORY_ENTRY currentImageEntry = NULL;
-	ULONG entryCount = 0;
+    // Initialize the output array to all zeros
+    RtlZeroMemory(ImageLoadInfoArray, MaxEntries * sizeof(IMAGE_LOAD_INFO));
 
-	if (ImageFilter::destroying || MaxEntries == 0 || ImageLoadInfoArray == NULL)
-	{
-		return 0;
-	}
+    PPROCESS_HISTORY_ENTRY currentProcessHistory;
+    PIMAGE_LOAD_HISTORY_ENTRY currentImageEntry = NULL;
+    ULONG entryCount = 0;
 
-	// Initialize output array
-	RtlZeroMemory(ImageLoadInfoArray, MaxEntries * sizeof(IMAGE_LOAD_INFO));
+    if (ImageFilter::destroying)
+    {
+        return 0;
+    }
 
-	// Acquire a shared lock to iterate processes
-	AcquireProcessLock();
+    // Acquire a shared lock to iterate processes
+    KeAcquireSpinLock(&ImageFilter::ProcessHistoryLock, &ImageFilter::ProcessHistoryOldIrql);
 
-	// Iterate through all processes
-	if (ImageFilter::ProcessHistory)
-	{
-		// Iterate through the array
-		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize && entryCount < MaxEntries; i++)
-		{
-			currentProcessHistory = &ImageFilter::ProcessHistory[i];
-			// If ProcessId is specified, only look at that process
-			if (ProcessId == 0 || currentProcessHistory->ProcessId == ProcessId)
-			{
-				// Acquire lock for image history list
-				// Use process lock instead for simplicity
-				AcquireProcessLock();
+    // Iterate through all processes
+    if (ImageFilter::ProcessHistory)
+    {
+        // Iterate through the array
+        for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize && entryCount < MaxEntries; i++)
+        {
+            currentProcessHistory = &ImageFilter::ProcessHistory[i];
+            // If ProcessId is specified, only look at that process
+            if (ProcessId == 0 || currentProcessHistory->ProcessId == ProcessId)
+            {
+                // Use process lock for simplicity
+                // Note: We're already holding the process lock, so we don't need to acquire it again
+                // This is a potential issue in the original code - nested locks could cause deadlocks
+                // For now, we'll keep the logic but comment out the nested lock acquisition
 
-				// Iterate through all images in this process
-				if (currentProcessHistory->ImageLoadHistory)
-				{
-					if (currentImageEntry == NULL)
-					{
-						continue;
-					}
-					currentImageEntry = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(currentProcessHistory->ImageLoadHistory->ListEntry.Flink);
-					while (currentImageEntry != currentProcessHistory->ImageLoadHistory && entryCount < MaxEntries)
-					{
-						// Skip empty entries
-						if (!currentImageEntry || !&currentImageEntry->ImageFileName)
-						{
-							currentImageEntry = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(currentImageEntry->ListEntry.Flink);
-							continue;
-						}
+                // Iterate through all images in this process
+                if (currentProcessHistory->ImageLoadHistory && currentProcessHistory->ImageLoadHistorySize > 0)
+                {
+                    LIST_ENTRY* firstEntry = &currentProcessHistory->ImageLoadHistory->ListEntry;
+                    LIST_ENTRY* currentEntry = firstEntry->Flink;
+                    
+                    while (currentEntry != firstEntry && entryCount < MaxEntries)
+                    {
+                        currentImageEntry = CONTAINING_RECORD(currentEntry, IMAGE_LOAD_HISTORY_ENTRY, ListEntry);
+                        
+                        // Skip empty entries
+                        if (!currentImageEntry || !currentImageEntry->ImageFileName.Buffer)
+                        {
+                            currentEntry = currentEntry->Flink;
+                            continue;
+                        }
 
-						// Fill in the image load info
-						IMAGE_LOAD_INFO *currentInfo = &ImageLoadInfoArray[entryCount];
+                        // Fill in the image load info
+                        IMAGE_LOAD_INFO *currentInfo = &ImageLoadInfoArray[entryCount];
 
-						// Process ID for this image
-						currentInfo->ProcessId = HandleToUlong(currentProcessHistory->ProcessId);
+                        // Process ID for this image
+                        currentInfo->ProcessId = HandleToUlong(currentProcessHistory->ProcessId);
 
-						// Remote load information
-						currentInfo->RemoteLoad = currentImageEntry->RemoteImage;
-						currentInfo->CallerProcessId = HandleToUlong(currentImageEntry->CallerProcessId);
+                        // Remote load information
+                        currentInfo->RemoteLoad = currentImageEntry->RemoteImage;
+                        currentInfo->CallerProcessId = HandleToUlong(currentImageEntry->CallerProcessId);
 
-						// Copy image path with bounds checking
-						if (currentImageEntry->ImageFileName.Buffer != NULL)
-						{
-							RtlCopyMemory(
-								currentInfo->ImagePath,
-								currentImageEntry->ImageFileName.Buffer,
-								min(sizeof(currentInfo->ImagePath), currentImageEntry->ImageFileName.Length));
-						}
+                        // Copy image path with bounds checking
+                        if (currentImageEntry->ImageFileName.Buffer != NULL)
+                        {
+                            RtlCopyMemory(
+                                currentInfo->ImagePath,
+                                currentImageEntry->ImageFileName.Buffer,
+                                min(sizeof(currentInfo->ImagePath) - sizeof(WCHAR), currentImageEntry->ImageFileName.Length));
+                            
+                            // Ensure null termination
+                            size_t maxChars = sizeof(currentInfo->ImagePath) / sizeof(WCHAR);
+                            currentInfo->ImagePath[maxChars - 1] = L'\0';
+                        }
 
-						// Get timestamp from system time
-						LARGE_INTEGER currentTime;
-						KeQuerySystemTime(&currentTime);
+                        // Get timestamp from system time
+                        LARGE_INTEGER currentTime;
+                        KeQuerySystemTime(&currentTime);
 
-						// Set load time (offset by the index for demonstration)
-						currentInfo->LoadTime.QuadPart = currentTime.QuadPart - (entryCount * 60000000); // 6 second intervals
+                        // Set load time (offset by the index for demonstration)
+                        currentInfo->LoadTime.QuadPart = currentTime.QuadPart - (entryCount * 60000000); // 6 second intervals
 
-						// Set simulated image base and size based on image name hash to be consistent
-						ULONG hashValue = 0;
-						if (currentImageEntry->ImageFileName.Buffer != NULL)
-						{
-							PWCHAR p = currentImageEntry->ImageFileName.Buffer;
-							while (*p != L'\0' && (ULONG_PTR)(p - currentImageEntry->ImageFileName.Buffer) < currentImageEntry->ImageFileName.Length / sizeof(WCHAR))
-							{
-								hashValue = (hashValue * 31) + *p++;
-							}
-						}
+                        // Set simulated image base and size based on image name hash to be consistent
+                        ULONG hashValue = 0;
+                        if (currentImageEntry->ImageFileName.Buffer != NULL)
+                        {
+                            PWCHAR p = currentImageEntry->ImageFileName.Buffer;
+                            SIZE_T charCount = currentImageEntry->ImageFileName.Length / sizeof(WCHAR);
+                            
+                            for (SIZE_T charIndex = 0; charIndex < charCount; charIndex++)
+                            {
+                                hashValue = (hashValue * 31) + p[charIndex];
+                            }
+                        }
 
-						currentInfo->ImageBase = 0x7FF00000 + (hashValue % 0xFFFFF); // Simulated reasonable user-mode DLL base
-						currentInfo->ImageSize = 0x10000 + (hashValue % 0xF0000);	 // Size between 64KB and 1MB
+                        currentInfo->ImageBase = 0x7FF00000 + (hashValue % 0xFFFFF); // Simulated reasonable user-mode DLL base
+                        currentInfo->ImageSize = 0x10000 + (hashValue % 0xF0000);    // Size between 64KB and 1MB
 
-						// Move to next entry
-						entryCount++;
-						currentImageEntry = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(currentImageEntry->ListEntry.Flink);
-					}
-				}
+                        // Move to next entry
+                        entryCount++;
+                        currentEntry = currentEntry->Flink;
+                    }
+                }
 
-				// Release image history lock
-				ReleaseProcessLock();
+                // If we're only looking for a specific process, we can stop here
+                if (ProcessId != 0)
+                {
+                    break;
+                }
+            }
+        }
+    }
 
-				// If we're only looking for a specific process, we can stop here
-				if (ProcessId != 0)
-				{
-					break;
-				}
-			}
+    // Release process history lock
+    KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
 
-			// Move to next process
-			// Already advancing in the for loop
-		}
-	}
+    // If we didn't find any entries, add some sample entries for demonstration purposes
+    // This ensures we always return some data even in a fresh system
+    if (entryCount == 0 && MaxEntries > 0)
+    {
+        // Create some sample entries
+        ULONG sampleCount = min(MaxEntries, 10);
+        LARGE_INTEGER currentTime;
+        KeQuerySystemTime(&currentTime);
 
-	// Release process history lock
-	ReleaseProcessLock();
+        for (ULONG i = 0; i < sampleCount; i++)
+        {
+            IMAGE_LOAD_INFO *image = &ImageLoadInfoArray[i];
 
-	// If we didn't find any entries, add some sample entries for demonstration purposes
-	// This ensures we always return some data even in a fresh system
-	if (entryCount == 0 && MaxEntries > 0)
-	{
-		// Create some sample entries
-		ULONG sampleCount = min(MaxEntries, 10);
-		LARGE_INTEGER currentTime;
-		KeQuerySystemTime(&currentTime);
+            // Use requested process ID or default to system process
+            image->ProcessId = ProcessId != 0 ? HandleToUlong(ProcessId) : 4;
 
-		for (ULONG i = 0; i < sampleCount; i++)
-		{
-			IMAGE_LOAD_INFO *image = &ImageLoadInfoArray[i];
+            // Set image properties
+            image->ImageBase = 0x7FF00000 + (i * 0x100000);
+            image->ImageSize = 0x10000 + (i * 0x5000);
+            image->RemoteLoad = (i % 4 == 0); // Every 4th is remote
 
-			// Use requested process ID or default to system process
-			image->ProcessId = ProcessId != 0 ? HandleToUlong(ProcessId) : 4;
+            // Set caller process ID
+            if (image->RemoteLoad)
+            {
+                image->CallerProcessId = 4; // System process
+            }
+            else
+            {
+                image->CallerProcessId = image->ProcessId;
+            }
 
-			// Set image properties
-			image->ImageBase = 0x7FF00000 + (i * 0x100000);
-			image->ImageSize = 0x10000 + (i * 0x5000);
-			image->RemoteLoad = (i % 4 == 0); // Every 4th is remote
+            // Set common DLL names
+            const WCHAR *dllNames[] = {
+                L"C:\\Windows\\System32\\ntdll.dll",
+                L"C:\\Windows\\System32\\kernel32.dll",
+                L"C:\\Windows\\System32\\user32.dll",
+                L"C:\\Windows\\System32\\gdi32.dll",
+                L"C:\\Windows\\System32\\combase.dll",
+                L"C:\\Windows\\System32\\shell32.dll",
+                L"C:\\Windows\\System32\\advapi32.dll",
+                L"C:\\Windows\\System32\\ws2_32.dll",
+                L"C:\\Windows\\System32\\msvcrt.dll",
+                L"C:\\Windows\\System32\\rpcrt4.dll"};
 
-			// Set caller process ID
-			if (image->RemoteLoad)
-			{
-				image->CallerProcessId = 4; // System process
-			}
-			else
-			{
-				image->CallerProcessId = image->ProcessId;
-			}
+            // Copy DLL name
+            const WCHAR *dllName = dllNames[i % 10];
+            size_t nameLen = wcslen(dllName) * sizeof(WCHAR);
+            RtlCopyMemory(image->ImagePath, dllName, min(sizeof(image->ImagePath) - sizeof(WCHAR), nameLen));
 
-			// Set common DLL names
-			const WCHAR *dllNames[] = {
-				L"C:\\Windows\\System32\\ntdll.dll",
-				L"C:\\Windows\\System32\\kernel32.dll",
-				L"C:\\Windows\\System32\\user32.dll",
-				L"C:\\Windows\\System32\\gdi32.dll",
-				L"C:\\Windows\\System32\\combase.dll",
-				L"C:\\Windows\\System32\\shell32.dll",
-				L"C:\\Windows\\System32\\advapi32.dll",
-				L"C:\\Windows\\System32\\ws2_32.dll",
-				L"C:\\Windows\\System32\\msvcrt.dll",
-				L"C:\\Windows\\System32\\rpcrt4.dll"};
+            // Ensure null termination
+            size_t maxChars = sizeof(image->ImagePath) / sizeof(WCHAR);
+            image->ImagePath[maxChars - 1] = L'\0';
 
-			// Copy DLL name
-			const WCHAR *dllName = dllNames[i % 10];
-			size_t nameLen = wcslen(dllName) * sizeof(WCHAR);
-			RtlCopyMemory(image->ImagePath, dllName, min(sizeof(image->ImagePath) - sizeof(WCHAR), nameLen));
+            // Set load time
+            image->LoadTime.QuadPart = currentTime.QuadPart - (i * 60000000); // 6 second intervals
+        }
 
-			// Ensure null termination
-			size_t maxChars = sizeof(image->ImagePath) / sizeof(WCHAR);
-			image->ImagePath[maxChars - 1] = L'\0';
+        entryCount = sampleCount;
+    }
 
-			// Set load time
-			image->LoadTime.QuadPart = currentTime.QuadPart - (i * 60000000); // 6 second intervals
-		}
-
-		entryCount = sampleCount;
-	}
-
-	return entryCount;
+    return entryCount;
 }
-
 
 /**
 	Retrieve the full image file name for a process.
@@ -880,6 +1096,12 @@ VOID ImageFilter::LoadImageNotifyRoutine(
     _In_ HANDLE ProcessId,
     _In_ PIMAGE_INFO ImageInfo)
 {
+    // If we're destroying, exit early
+    if (ImageFilter::destroying)
+    {
+        return;
+    }
+
     // If we're at high IRQL, skip everything
     if (KeGetCurrentIrql() > PASSIVE_LEVEL)
     {
@@ -887,116 +1109,83 @@ VOID ImageFilter::LoadImageNotifyRoutine(
         return;
     }
 
-    NTSTATUS status;
-    PPROCESS_HISTORY_ENTRY currentProcessHistory;
-    PIMAGE_LOAD_HISTORY_ENTRY newImageLoadHistory;
-
-    UNREFERENCED_PARAMETER(ImageInfo);
-
-    currentProcessHistory = NULL;
-    newImageLoadHistory = NULL;
-    status = STATUS_SUCCESS;
-
-    if (ImageFilter::destroying)
+    // Initial safety checks
+    if (ProcessId == NULL || ImageInfo == NULL)
     {
         return;
     }
 
-    // Continue only at PASSIVE_LEVEL
-    AcquireProcessLock();
+    // Create a work item to handle this notification at PASSIVE_LEVEL
+    PIMAGE_LOAD_WORK_ITEM workItem = (PIMAGE_LOAD_WORK_ITEM)ExAllocatePool2(
+        POOL_FLAG_NON_PAGED,
+        sizeof(IMAGE_LOAD_WORK_ITEM),
+        'ILwI');
 
-    if (ImageFilter::ProcessHistory)
+    if (workItem == NULL)
     {
-        for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
+        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate work item");
+        return;
+    }
+
+    // Initialize work item
+    memset(workItem, 0, sizeof(IMAGE_LOAD_WORK_ITEM));
+    workItem->ProcessId = ProcessId;
+    workItem->CallerProcessId = PsGetCurrentProcessId();
+    workItem->RemoteImage = (PsGetCurrentProcessId() != ProcessId);
+    
+    // Copy the image info
+    memcpy(&workItem->ImageInfo, ImageInfo, sizeof(IMAGE_INFO));
+    
+    // Only copy the image name if it's valid
+    if (FullImageName != NULL && FullImageName->Buffer != NULL && FullImageName->Length > 0)
+    {
+        // Allocate memory for the image name
+        workItem->ImageName.Buffer = (PWCH)ExAllocatePool2(
+            POOL_FLAG_NON_PAGED,
+            FullImageName->Length + sizeof(WCHAR),
+            'ILwI');
+            
+        if (workItem->ImageName.Buffer != NULL)
         {
-            if (ImageFilter::ProcessHistory[i].ProcessId == ProcessId && ImageFilter::ProcessHistory[i].ProcessTerminated == FALSE)
-            {
-                currentProcessHistory = &ImageFilter::ProcessHistory[i];
-                break;
-            }
+            // Copy the image name
+            workItem->ImageName.Length = FullImageName->Length;
+            workItem->ImageName.MaximumLength = FullImageName->Length + sizeof(WCHAR);
+            RtlCopyMemory(workItem->ImageName.Buffer, FullImageName->Buffer, FullImageName->Length);
+            workItem->ImageName.Buffer[FullImageName->Length / sizeof(WCHAR)] = L'\0';
         }
     }
-
-    if (currentProcessHistory == NULL)
+    
+    // Modern way to create and queue a system worker thread
+    HANDLE threadHandle;
+    OBJECT_ATTRIBUTES objAttr;
+    
+    InitializeObjectAttributes(&objAttr, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+    
+    NTSTATUS status = PsCreateSystemThread(
+        &threadHandle,
+        THREAD_ALL_ACCESS,
+        &objAttr,
+        NULL,
+        NULL,
+        ImageLoadWorkItemRoutine,
+        workItem);
+        
+    if (!NT_SUCCESS(status))
     {
-        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to find PID %p in history.", ProcessId);
-        status = STATUS_NOT_FOUND;
-        goto Exit;
-    }
-
-    newImageLoadHistory = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(IMAGE_LOAD_HISTORY_ENTRY), IMAGE_HISTORY_TAG));
-    if (newImageLoadHistory == NULL)
-    {
-        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the image history entry.");
-        status = STATUS_NO_MEMORY;
-        goto Exit;
-    }
-    memset(newImageLoadHistory, 0, sizeof(IMAGE_LOAD_HISTORY_ENTRY));
-
-    newImageLoadHistory->CallerProcessId = PsGetCurrentProcessId();
-    if (PsGetCurrentProcessId() != ProcessId)
-    {
-        newImageLoadHistory->RemoteImage = TRUE;
-        ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &newImageLoadHistory->CallerImageFileName);
-    }
-
-    if (FullImageName)
-    {
-        newImageLoadHistory->ImageFileName.Buffer = RCAST<PWCH>(ExAllocatePool2(POOL_FLAG_PAGED, SCAST<SIZE_T>(FullImageName->Length) + 2, IMAGE_NAME_TAG));
-        if (newImageLoadHistory->ImageFileName.Buffer == NULL)
+        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to create system thread with status 0x%X", status);
+        
+        // Free resources
+        if (workItem->ImageName.Buffer != NULL)
         {
-            DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the image file name.");
-            status = STATUS_NO_MEMORY;
-            goto Exit;
+            ExFreePoolWithTag(workItem->ImageName.Buffer, 'ILwI');
         }
-
-        newImageLoadHistory->ImageFileName.Length = SCAST<SIZE_T>(FullImageName->Length) + 2;
-        newImageLoadHistory->ImageFileName.MaximumLength = SCAST<SIZE_T>(FullImageName->Length) + 2;
-
-        status = RtlStringCbCopyUnicodeString(newImageLoadHistory->ImageFileName.Buffer, SCAST<SIZE_T>(FullImageName->Length) + 2, FullImageName);
-        if (NT_SUCCESS(status) == FALSE)
-        {
-            DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to copy the image file name with status 0x%X. Destination size = 0x%X, Source Size = 0x%X.",
-                     status,
-                     (unsigned int)(SCAST<SIZE_T>(FullImageName->Length) + 2),
-                     (unsigned int)(SCAST<SIZE_T>(FullImageName->Length)));
-
-            goto Exit;
-        }
+        
+        ExFreePoolWithTag(workItem, 'ILwI');
+        return;
     }
-
-    // Critical change: No stack walking at all in image notifications
-    // The stack walk is what's causing freezes in the VM
-    newImageLoadHistory->CallerStackHistorySize = 0;
-    newImageLoadHistory->CallerStackHistory = NULL;
-
-    AcquireProcessLock();
-
-    InsertHeadList(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory), RCAST<PLIST_ENTRY>(newImageLoadHistory));
-    currentProcessHistory->ImageLoadHistorySize++;
-
-    ReleaseProcessLock();
-
-    // Skip the AuditUserStackWalk call since we're not collecting stack info
-
-Exit:
-    ReleaseProcessLock();
-
-    if (newImageLoadHistory && NT_SUCCESS(status) == FALSE)
-    {
-        if (newImageLoadHistory->ImageFileName.Buffer)
-        {
-            ExFreePoolWithTag(newImageLoadHistory->ImageFileName.Buffer, IMAGE_NAME_TAG);
-            DBGPRINT("Free'd 'PmIn' at %p.", newImageLoadHistory->ImageFileName.Buffer);
-        }
-        if (newImageLoadHistory->CallerStackHistory)
-        {
-            ExFreePoolWithTag(newImageLoadHistory->CallerStackHistory, STACK_HISTORY_TAG);
-            DBGPRINT("Free'd 'PmSh' at %p.", newImageLoadHistory->CallerStackHistory);
-        }
-        ExFreePoolWithTag(newImageLoadHistory, IMAGE_HISTORY_TAG);
-        DBGPRINT("Free'd 'PmIh' at %p.", newImageLoadHistory);
-    }
+    
+    // Close the thread handle since we don't need it
+    ZwClose(threadHandle);
 }
 
 /**
@@ -1322,68 +1511,63 @@ VOID ImageFilter::ThreadNotifyRoutine(
         return;
     }
 
-    // Skip at high IRQL completely - separate check
+    // Skip if we're shutting down
+    if (ImageFilter::destroying)
+    {
+        return;
+    }
+
+    // Skip at high IRQL completely
     if (KeGetCurrentIrql() > PASSIVE_LEVEL)
     {
         DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
         return;
     }
 
-    ULONG processThreadCount = 0;
-    PVOID threadStartAddress = NULL;
-    PSTACK_RETURN_INFO threadCreateStack = NULL;
-    ULONG threadCreateStackSize = 64;
-    PUNICODE_STRING threadCallerName = NULL;  // Initialize to NULL
-    PUNICODE_STRING threadTargetName = NULL;  // Initialize to NULL
+    // Create a work item to handle thread creation at PASSIVE_LEVEL
+    PTHREAD_CREATE_WORK_ITEM workItem = (PTHREAD_CREATE_WORK_ITEM)ExAllocatePool2(
+        POOL_FLAG_NON_PAGED,
+        sizeof(THREAD_CREATE_WORK_ITEM),
+        'ThWI');
 
-    // If we can't find the process or it's the first thread of the process, skip it
-    if (ImageFilter::AddProcessThreadCount(ProcessId, &processThreadCount) == FALSE ||
-        processThreadCount <= 1)
+    if (workItem == NULL)
     {
+        DBGPRINT("ImageFilter!ThreadNotifyRoutine: Failed to allocate work item");
         return;
     }
 
-    // CRITICAL CHANGE: Don't walk the stack at all in thread notifications
-    // This is likely causing VM freezes
-    threadCreateStackSize = 0;
-    threadCreateStack = NULL;
-
-    // Grab the name of the caller
-    if (ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &threadCallerName) == FALSE)
+    // Initialize work item
+    memset(workItem, 0, sizeof(THREAD_CREATE_WORK_ITEM));
+    workItem->ProcessId = ProcessId;
+    workItem->ThreadId = ThreadId;
+    workItem->CallerProcessId = PsGetCurrentProcessId();
+    
+    // Modern way to create and queue a system worker thread
+    HANDLE threadHandle;
+    OBJECT_ATTRIBUTES objAttr;
+    
+    InitializeObjectAttributes(&objAttr, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+    
+    NTSTATUS status = PsCreateSystemThread(
+        &threadHandle,
+        THREAD_ALL_ACCESS,
+        &objAttr,
+        NULL,
+        NULL,
+        ThreadCreateWorkItemRoutine,
+        workItem);
+        
+    if (!NT_SUCCESS(status))
     {
-        goto Exit;
+        DBGPRINT("ImageFilter!ThreadNotifyRoutine: Failed to create system thread with status 0x%X", status);
+        
+        // Free resources
+        ExFreePoolWithTag(workItem, 'ThWI');
+        return;
     }
-
-    threadTargetName = threadCallerName;
-
-    // We only need to resolve again if the target process is a different than the caller
-    if (PsGetCurrentProcessId() != ProcessId)
-    {
-        // Grab the name of the target
-        if (ImageFilter::GetProcessImageFileName(ProcessId, &threadTargetName) == FALSE)
-        {
-            goto Exit;
-        }
-    }
-
-    // Grab the start address of the thread
-    threadStartAddress = ImageFilter::GetThreadStartAddress(ThreadId);
-
-    // Skip all stack-based audits since we're not collecting stack info
-
-Exit:
-    if (threadCreateStack != NULL)
-    {
-        ExFreePoolWithTag(threadCreateStack, STACK_HISTORY_TAG);
-    }
-    if (threadCallerName != NULL)
-    {
-        ExFreePoolWithTag(threadCallerName, IMAGE_NAME_TAG);
-    }
-    if (threadCallerName != threadTargetName && threadTargetName != NULL)
-    {
-        ExFreePoolWithTag(threadTargetName, IMAGE_NAME_TAG);
-    }
+    
+    // Close the thread handle since we don't need it
+    ZwClose(threadHandle);
 }
 
 /**
