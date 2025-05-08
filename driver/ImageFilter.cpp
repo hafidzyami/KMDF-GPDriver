@@ -6,17 +6,11 @@
 // Work item structure for deferred image load processing
 // Updated work item structure for IO work item pattern
 typedef struct _IMAGE_LOAD_WORK_ITEM {
-	union {
-		WORK_QUEUE_ITEM OldWorkItem;     // For backwards compatibility if needed
-		struct {
-			PIO_WORKITEM IoWorkItem;     // Pointer to IO work item
-			PVOID Reserved;              // For alignment with old structure
-		} IoWork;  // Add a name to the struct
-	} WorkItem;
-	UNICODE_STRING ImageName;
-	HANDLE ProcessId;
-	IMAGE_INFO ImageInfo;
-} IMAGE_LOAD_WORK_ITEM, * PIMAGE_LOAD_WORK_ITEM;
+    WORK_QUEUE_ITEM WorkQueueItem;  // Must be first field for proper casting
+    UNICODE_STRING ImageName;
+    HANDLE ProcessId;
+    IMAGE_INFO ImageInfo;
+} IMAGE_LOAD_WORK_ITEM, *PIMAGE_LOAD_WORK_ITEM;
 
 // Work item routine for deferred image processing
 // Updated work item routine for IO work item pattern
@@ -115,13 +109,13 @@ ImageFilter::ImageFilter(
 	//
 	// Set the load image notify routine.
 	//
-	tempStatus = PsSetLoadImageNotifyRoutine(ImageFilter::LoadImageNotifyRoutine);
-	if (NT_SUCCESS(tempStatus) == FALSE)
-	{
-		DBGPRINT("ImageFilter!ImageFilter: Failed to register load image notify routine with status 0x%X.", tempStatus);
-		*InitializeStatus = tempStatus;
-		return;
-	}
+	// tempStatus = PsSetLoadImageNotifyRoutine(ImageFilter::LoadImageNotifyRoutine);
+	// if (NT_SUCCESS(tempStatus) == FALSE)
+	// {
+	// 	DBGPRINT("ImageFilter!ImageFilter: Failed to register load image notify routine with status 0x%X.", tempStatus);
+	// 	*InitializeStatus = tempStatus;
+	// 	return;
+	// }
 
 	// Initialize spin lock
 	KeInitializeSpinLock(&ImageFilter::ProcessHistoryLock);
@@ -886,6 +880,13 @@ VOID ImageFilter::LoadImageNotifyRoutine(
     _In_ HANDLE ProcessId,
     _In_ PIMAGE_INFO ImageInfo)
 {
+    // If we're at high IRQL, skip everything
+    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
+    {
+        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
+        return;
+    }
+
     NTSTATUS status;
     PPROCESS_HISTORY_ENTRY currentProcessHistory;
     PIMAGE_LOAD_HISTORY_ENTRY newImageLoadHistory;
@@ -901,71 +902,7 @@ VOID ImageFilter::LoadImageNotifyRoutine(
         return;
     }
 
-    // Check IRQL level - if above PASSIVE_LEVEL, use system thread instead of work items
-    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
-    {
-        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Deferring processing due to high IRQL (%d)", KeGetCurrentIrql());
-
-        // Allocate a context structure (safe at any IRQL from NonPagedPool)
-        PIMAGE_LOAD_WORK_ITEM workItem = (PIMAGE_LOAD_WORK_ITEM)
-            ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(IMAGE_LOAD_WORK_ITEM), 'ILwI');
-
-        if (workItem != NULL)
-        {
-            // Initialize the context
-            RtlZeroMemory(workItem, sizeof(IMAGE_LOAD_WORK_ITEM));
-            
-            // Copy process ID and image info
-            workItem->ProcessId = ProcessId;
-            if (ImageInfo != NULL) {
-                RtlCopyMemory(&workItem->ImageInfo, ImageInfo, sizeof(IMAGE_INFO));
-            }
-            
-            // Copy image name if available
-            if (FullImageName != NULL && FullImageName->Buffer != NULL && FullImageName->Length > 0) {
-                workItem->ImageName.Buffer = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED,
-                                         FullImageName->Length + sizeof(WCHAR), 'ILwI');
-                
-                if (workItem->ImageName.Buffer != NULL) {
-                    RtlZeroMemory(workItem->ImageName.Buffer, FullImageName->Length + sizeof(WCHAR));
-                    RtlCopyMemory(workItem->ImageName.Buffer, FullImageName->Buffer, FullImageName->Length);
-                    workItem->ImageName.Length = FullImageName->Length;
-                    workItem->ImageName.MaximumLength = FullImageName->Length + sizeof(WCHAR);
-                }
-            }
-            
-            // Use KeExpandedSetSystemWorkItem instead of ExQueueWorkItem
-            HANDLE threadHandle;
-            OBJECT_ATTRIBUTES objAttribs;
-            
-            InitializeObjectAttributes(&objAttribs, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
-            
-            // Create a system thread to process the work item
-            status = PsCreateSystemThread(
-                &threadHandle,
-                THREAD_ALL_ACCESS,
-                &objAttribs,
-                NULL,
-                NULL,
-                ImageLoadWorkItemRoutine,
-                workItem);
-                
-            if (!NT_SUCCESS(status)) {
-                // Clean up if thread creation failed
-                if (workItem->ImageName.Buffer != NULL) {
-                    ExFreePoolWithTag(workItem->ImageName.Buffer, 'ILwI');
-                }
-                ExFreePoolWithTag(workItem, 'ILwI');
-                DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to create system thread, status 0x%X", status);
-            } else {
-                // Close the thread handle since we don't need it
-                ZwClose(threadHandle);
-            }
-        }
-        return;
-    }
-
-    // Rest of the function remains unchanged
+    // Continue only at PASSIVE_LEVEL
     AcquireProcessLock();
 
     if (ImageFilter::ProcessHistory)
@@ -1028,13 +965,10 @@ VOID ImageFilter::LoadImageNotifyRoutine(
         }
     }
 
-    newImageLoadHistory->CallerStackHistorySize = MAX_STACK_RETURN_HISTORY;
-    walker.WalkAndResolveStack(&newImageLoadHistory->CallerStackHistory, &newImageLoadHistory->CallerStackHistorySize, STACK_HISTORY_TAG);
-    if (newImageLoadHistory->CallerStackHistory == NULL)
-    {
-        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate space for the stack history - continuing without stack info.");
-        newImageLoadHistory->CallerStackHistorySize = 0;
-    }
+    // Critical change: No stack walking at all in image notifications
+    // The stack walk is what's causing freezes in the VM
+    newImageLoadHistory->CallerStackHistorySize = 0;
+    newImageLoadHistory->CallerStackHistory = NULL;
 
     AcquireProcessLock();
 
@@ -1043,15 +977,8 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 
     ReleaseProcessLock();
 
-    if (newImageLoadHistory->CallerStackHistory != NULL && newImageLoadHistory->CallerStackHistorySize > 0)
-    {
-        ImageFilter::detector->AuditUserStackWalk(ImageLoad,
-                                              PsGetCurrentProcessId(),
-                                              currentProcessHistory->ProcessImageFileName,
-                                              &newImageLoadHistory->ImageFileName,
-                                              newImageLoadHistory->CallerStackHistory,
-                                              newImageLoadHistory->CallerStackHistorySize);
-    }
+    // Skip the AuditUserStackWalk call since we're not collecting stack info
+
 Exit:
     ReleaseProcessLock();
 
@@ -1071,6 +998,7 @@ Exit:
         DBGPRINT("Free'd 'PmIh' at %p.", newImageLoadHistory);
     }
 }
+
 /**
 	Get the summary for MaxProcessSummaries processes starting from the top of list + SkipCount.
 	@param SkipCount - How many processes to skip in the list.
@@ -1382,115 +1310,80 @@ Exit:
 	@param ThreadId - The thread ID of the new thread.
 	@param Create - Whether or not this is termination of a thread or creation.
 */
+
 VOID ImageFilter::ThreadNotifyRoutine(
-	_In_ HANDLE ProcessId,
-	_In_ HANDLE ThreadId,
-	_In_ BOOLEAN Create)
+    _In_ HANDLE ProcessId,
+    _In_ HANDLE ThreadId,
+    _In_ BOOLEAN Create)
 {
-	ULONG processThreadCount = 0;
-	PVOID threadStartAddress = NULL; // Initialize to NULL
-	PSTACK_RETURN_INFO threadCreateStack = NULL;
-	ULONG threadCreateStackSize = 64;
-	PUNICODE_STRING threadCallerName = NULL; // Initialize to NULL
-	PUNICODE_STRING threadTargetName = NULL;
+    // We don't really care about thread termination or if the thread is kernel-mode
+    if (Create == FALSE || ExGetPreviousMode() == KernelMode)
+    {
+        return;
+    }
 
-	//
-	// We don't really care about thread termination or if the thread is kernel-mode.
-	//
-	if (Create == FALSE || ExGetPreviousMode() == KernelMode)
-	{
-		return;
-	}
+    // Skip at high IRQL completely - separate check
+    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
+    {
+        DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
+        return;
+    }
 
-	// Check IRQL level - we should only proceed at PASSIVE_LEVEL
-	if (KeGetCurrentIrql() > PASSIVE_LEVEL)
-	{
-		DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
-		return; // Skip at high IRQL instead of trying to allocate memory
-	}
+    ULONG processThreadCount = 0;
+    PVOID threadStartAddress = NULL;
+    PSTACK_RETURN_INFO threadCreateStack = NULL;
+    ULONG threadCreateStackSize = 64;
+    PUNICODE_STRING threadCallerName = NULL;  // Initialize to NULL
+    PUNICODE_STRING threadTargetName = NULL;  // Initialize to NULL
 
-	//
-	// If we can't find the process or it's the first thread of the process, skip it.
-	//
-	if (ImageFilter::AddProcessThreadCount(ProcessId, &processThreadCount) == FALSE ||
-		processThreadCount <= 1)
-	{
-		return;
-	}
+    // If we can't find the process or it's the first thread of the process, skip it
+    if (ImageFilter::AddProcessThreadCount(ProcessId, &processThreadCount) == FALSE ||
+        processThreadCount <= 1)
+    {
+        return;
+    }
 
-	//
-	// Walk the stack.
-	//
-	ImageFilter::walker.WalkAndResolveStack(&threadCreateStack, &threadCreateStackSize, STACK_HISTORY_TAG);
-	// Continue even if stack walk fails
-	if (threadCreateStack == NULL)
-	{
-		DBGPRINT("ImageFilter!ThreadNotifyRoutine: Failed to walk the stack, continuing without stack info.");
-		threadCreateStackSize = 0;
-	}
+    // CRITICAL CHANGE: Don't walk the stack at all in thread notifications
+    // This is likely causing VM freezes
+    threadCreateStackSize = 0;
+    threadCreateStack = NULL;
 
-	//
-	// Grab the name of the caller.
-	//
-	threadCallerName = NULL; // Initialize to NULL first
-	if (ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &threadCallerName) == FALSE)
-	{
-		// Already initialized to NULL above
-		goto Exit;
-	}
+    // Grab the name of the caller
+    if (ImageFilter::GetProcessImageFileName(PsGetCurrentProcessId(), &threadCallerName) == FALSE)
+    {
+        goto Exit;
+    }
 
-	threadTargetName = threadCallerName;
+    threadTargetName = threadCallerName;
 
-	//
-	// We only need to resolve again if the target process is a different than the caller.
-	//
-	if (PsGetCurrentProcessId() != ProcessId)
-	{
-		//
-		// Grab the name of the target.
-		//
-		if (ImageFilter::GetProcessImageFileName(ProcessId, &threadTargetName) == FALSE)
-		{
-			goto Exit;
-		}
-	}
+    // We only need to resolve again if the target process is a different than the caller
+    if (PsGetCurrentProcessId() != ProcessId)
+    {
+        // Grab the name of the target
+        if (ImageFilter::GetProcessImageFileName(ProcessId, &threadTargetName) == FALSE)
+        {
+            goto Exit;
+        }
+    }
 
-	//
-	// Grab the start address of the thread.
-	//
-	threadStartAddress = ImageFilter::GetThreadStartAddress(ThreadId);
+    // Grab the start address of the thread
+    threadStartAddress = ImageFilter::GetThreadStartAddress(ThreadId);
 
-	// Only perform audits if we actually have stack information
-	if (threadCreateStack != NULL && threadCreateStackSize > 0)
-	{
-		//
-		// Audit the target's start address.
-		//
-		ImageFilter::detector->AuditUserPointer(ThreadCreate, threadStartAddress, PsGetCurrentProcessId(), threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
+    // Skip all stack-based audits since we're not collecting stack info
 
-		//
-		// Audit the caller's stack.
-		//
-		ImageFilter::detector->AuditUserStackWalk(ThreadCreate, PsGetCurrentProcessId(), threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
-
-		//
-		// Check if this is a remote operation.
-		//
-		ImageFilter::detector->AuditCallerProcessId(ThreadCreate, PsGetCurrentProcessId(), ProcessId, threadCallerName, threadTargetName, threadCreateStack, threadCreateStackSize);
-	}
 Exit:
-	if (threadCreateStack != NULL)
-	{
-		ExFreePoolWithTag(threadCreateStack, STACK_HISTORY_TAG);
-	}
-	if (threadCallerName != NULL)
-	{
-		ExFreePoolWithTag(threadCallerName, IMAGE_NAME_TAG);
-	}
-	if (threadCallerName != threadTargetName && threadTargetName != NULL)
-	{
-		ExFreePoolWithTag(threadTargetName, IMAGE_NAME_TAG);
-	}
+    if (threadCreateStack != NULL)
+    {
+        ExFreePoolWithTag(threadCreateStack, STACK_HISTORY_TAG);
+    }
+    if (threadCallerName != NULL)
+    {
+        ExFreePoolWithTag(threadCallerName, IMAGE_NAME_TAG);
+    }
+    if (threadCallerName != threadTargetName && threadTargetName != NULL)
+    {
+        ExFreePoolWithTag(threadTargetName, IMAGE_NAME_TAG);
+    }
 }
 
 /**
