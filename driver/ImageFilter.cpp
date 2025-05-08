@@ -325,16 +325,16 @@ ImageFilter::ImageFilter(
 		return;
 	}
 
-	//
+	
 	// Set the load image notify routine.
-	//
-	// tempStatus = PsSetLoadImageNotifyRoutine(ImageFilter::LoadImageNotifyRoutine);
-	// if (NT_SUCCESS(tempStatus) == FALSE)
-	// {
-	// 	DBGPRINT("ImageFilter!ImageFilter: Failed to register load image notify routine with status 0x%X.", tempStatus);
-	// 	*InitializeStatus = tempStatus;
-	// 	return;
-	// }
+	
+	tempStatus = PsSetLoadImageNotifyRoutine(ImageFilter::LoadImageNotifyRoutine);
+	if (NT_SUCCESS(tempStatus) == FALSE)
+	{
+		DBGPRINT("ImageFilter!ImageFilter: Failed to register load image notify routine with status 0x%X.", tempStatus);
+		*InitializeStatus = tempStatus;
+		return;
+	}
 
 	// Initialize spin lock
 	KeInitializeSpinLock(&ImageFilter::ProcessHistoryLock);
