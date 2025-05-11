@@ -367,6 +367,31 @@ ProcessNotifyCallbackRoutine(
             // Update statistics safely
             InterlockedIncrement((PLONG)&TDriverClass::TotalProcessesMonitored);
             InterlockedIncrement((PLONG)&TDriverClass::ActiveProcesses);
+
+            // Ini akan membantu memastikan proses benar-benar tercatat dalam history
+            BOOLEAN added = FALSE;
+            for (ULONG i = 0; i < 5 && !added; i++) { // Coba beberapa kali jika gagal
+                if (ImageFilter::ProcessHistorySize > 0) {
+                    for (ULONG j = 0; j < ImageFilter::ProcessHistorySize; j++) {
+                        if (ImageFilter::ProcessHistory[j].ProcessId == ProcessId) {
+                            added = TRUE;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!added) {
+                    // Beri waktu entry ditambahkan oleh CreateProcessNotifyRoutine
+                    LARGE_INTEGER delay;
+                    delay.QuadPart = -10 * 1000 * 1000; // 1 detik
+                    KeDelayExecutionThread(KernelMode, FALSE, &delay);
+                }
+            }
+            
+            if (!added) {
+                DbgPrint("[PROCESS-CREATE] WARNING: Process %llu was not added to history after 5 seconds",
+                         (ULONGLONG)ProcessId);
+            }
         }
         // Handle process termination
         else {

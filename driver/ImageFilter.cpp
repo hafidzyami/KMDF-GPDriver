@@ -397,6 +397,8 @@ ImageFilter::~ImageFilter(
 	PPROCESS_HISTORY_ENTRY currentProcessHistory;
 	PIMAGE_LOAD_HISTORY_ENTRY currentImageEntry = NULL;
 
+	DBGPRINT("ImageFilter!~ImageFilter: Starting destructor");
+
 	//
 	// Set destroying to TRUE so that no other threads can get a lock.
 	//
@@ -408,6 +410,8 @@ ImageFilter::~ImageFilter(
 	PsSetCreateProcessNotifyRoutineEx(ImageFilter::CreateProcessNotifyRoutine, TRUE);
 	PsRemoveLoadImageNotifyRoutine(ImageFilter::LoadImageNotifyRoutine);
 	PsRemoveCreateThreadNotifyRoutine(ImageFilter::ThreadNotifyRoutine);
+
+	DBGPRINT("ImageFilter!~ImageFilter: Removed all notify routines");
 
 	//
 	// Acquire an exclusive lock to push out other threads.
@@ -422,20 +426,27 @@ ImageFilter::~ImageFilter(
 	// FastMutex doesn't need to be deleted
 
 	//
-	// Go through each process history and free it.
+	// Go through each process history and free its contents
+	// (not the entry itself since it's part of the array)
 	//
 	if (ImageFilter::ProcessHistory)
 	{
+		DBGPRINT("ImageFilter!~ImageFilter: Cleaning up %llu process history entries", ImageFilter::ProcessHistorySize);
+		
 		// Iterate through all the used entries in the array
 		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
 		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
+			DBGPRINT("ImageFilter!~ImageFilter: Cleaning entry %llu for PID %p", i, currentProcessHistory->ProcessId);
+			
 			//
 			// Clear the images linked-list.
 			//
-			// No need to delete spin lock
 			if (currentProcessHistory->ImageLoadHistory)
 			{
+				DBGPRINT("ImageFilter!~ImageFilter: Cleaning image load history for PID %p, size %lu", 
+				          currentProcessHistory->ProcessId, currentProcessHistory->ImageLoadHistorySize);
+				
 				while (IsListEmpty(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory)) == FALSE)
 				{
 					currentImageEntry = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(RemoveHeadList(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory)));
@@ -456,7 +467,10 @@ ImageFilter::~ImageFilter(
 					//
 					// Free the stack history.
 					//
-					ExFreePoolWithTag(currentImageEntry->CallerStackHistory, STACK_HISTORY_TAG);
+					if (currentImageEntry->CallerStackHistory)
+					{
+						ExFreePoolWithTag(currentImageEntry->CallerStackHistory, STACK_HISTORY_TAG);
+					}
 
 					ExFreePoolWithTag(currentImageEntry, IMAGE_HISTORY_TAG);
 				}
@@ -465,6 +479,17 @@ ImageFilter::~ImageFilter(
 				// Finally, free the list head.
 				//
 				ExFreePoolWithTag(currentProcessHistory->ImageLoadHistory, IMAGE_HISTORY_TAG);
+			}
+
+			//
+			// Free the thread history if any
+			//
+			if (currentProcessHistory->ThreadHistory)
+			{
+				DBGPRINT("ImageFilter!~ImageFilter: Cleaning thread history for PID %p, size %lu", 
+				          currentProcessHistory->ProcessId, currentProcessHistory->ThreadHistorySize);
+				
+				ExFreePoolWithTag(currentProcessHistory->ThreadHistory, 'ThHI'); // Using a tag that matches allocation
 			}
 
 			//
@@ -490,19 +515,25 @@ ImageFilter::~ImageFilter(
 			//
 			// Free the stack history.
 			//
-			ExFreePoolWithTag(currentProcessHistory->CallerStackHistory, STACK_HISTORY_TAG);
+			if (currentProcessHistory->CallerStackHistory)
+			{
+				ExFreePoolWithTag(currentProcessHistory->CallerStackHistory, STACK_HISTORY_TAG);
+			}
 
-			//
-			// Free the process history.
-			//
-			ExFreePoolWithTag(currentProcessHistory, PROCESS_HISTORY_TAG);
+			// CRITICAL BUG FIX: Do NOT free the process history entry itself!
+			// It's part of the ProcessHistory array, not individually allocated.
+			// REMOVE THIS LINE:
+			// ExFreePoolWithTag(currentProcessHistory, PROCESS_HISTORY_TAG);
 		}
 
 		//
-		// Finally, free the list head.
+		// Finally, free the entire array at once.
 		//
+		DBGPRINT("ImageFilter!~ImageFilter: Freeing the entire process history array");
 		ExFreePoolWithTag(ImageFilter::ProcessHistory, PROCESS_HISTORY_TAG);
 	}
+	
+	DBGPRINT("ImageFilter!~ImageFilter: Destructor completed");
 }
 
 /**
@@ -538,6 +569,7 @@ VOID ImageFilter::AddProcessToHistory(
 	LARGE_INTEGER systemTime;
 	LARGE_INTEGER localSystemTime;
 	BOOLEAN processHistoryLockHeld;
+	ULONG64 newIndex;
 
 	processHistoryLockHeld = FALSE;
 	status = STATUS_SUCCESS;
@@ -547,16 +579,31 @@ VOID ImageFilter::AddProcessToHistory(
 		return;
 	}
 
+	// Acquire lock first to safely check and update the size
+	AcquireProcessLock();
+	
 	// Check if we have room in the array
 	if (ImageFilter::ProcessHistorySize >= 100)
 	{
 		DBGPRINT("ImageFilter!AddProcessToHistory: Process history array is full.");
+		ReleaseProcessLock();
 		status = STATUS_NO_MEMORY;
 		goto Exit;
 	}
-
+	
+	// Save the index we'll use and pre-increment size
+	newIndex = ImageFilter::ProcessHistorySize;
+	
 	// Get a reference to the next available entry in the array
-	newProcessHistory = &ImageFilter::ProcessHistory[ImageFilter::ProcessHistorySize];
+	newProcessHistory = &ImageFilter::ProcessHistory[newIndex];
+	
+	// Release the lock while we set up the entry
+	ReleaseProcessLock();
+	
+	// Add debug output to track the process being added
+	DBGPRINT("ImageFilter!AddProcessToHistory: Adding PID %p to history index %llu", 
+	        ProcessId, newIndex);
+	
 	memset(newProcessHistory, 0, sizeof(PROCESS_HISTORY_ENTRY));
 
 	//
@@ -570,6 +617,11 @@ VOID ImageFilter::AddProcessToHistory(
 	KeQuerySystemTime(&systemTime);
 	ExSystemTimeToLocalTime(&systemTime, &localSystemTime);
 	newProcessHistory->EpochExecutionTime = localSystemTime.QuadPart / TICKSPERSEC - SECS_1601_TO_1970;
+	
+	// Initialize thread tracking fields
+	newProcessHistory->ThreadHistorySize = 0;
+	newProcessHistory->ThreadHistory = NULL;
+	
 	//
 	// Image file name fields.
 	//
@@ -581,7 +633,7 @@ VOID ImageFilter::AddProcessToHistory(
 	if (newProcessHistory->ProcessImageFileName == NULL)
 	{
 		DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for process ImageFileName.");
-		goto Exit;
+		goto Increment; // Still increment the count even if we couldn't fully populate
 	}
 
 	newProcessHistory->ProcessImageFileName->Buffer = RCAST<PWCH>(RCAST<ULONG_PTR>(newProcessHistory->ProcessImageFileName) + sizeof(UNICODE_STRING));
@@ -602,7 +654,7 @@ VOID ImageFilter::AddProcessToHistory(
 		if (newProcessHistory->ProcessCommandLine == NULL)
 		{
 			DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for process command line.");
-			goto Exit;
+			goto Increment; // Still increment the count even if we couldn't fully populate
 		}
 
 		newProcessHistory->ProcessCommandLine->Buffer = RCAST<PWCH>(RCAST<ULONG_PTR>(newProcessHistory->ProcessCommandLine) + sizeof(UNICODE_STRING));
@@ -642,26 +694,11 @@ VOID ImageFilter::AddProcessToHistory(
 	{
 		DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for the image load history.");
 		status = STATUS_NO_MEMORY;
-		goto Exit;
+		goto Increment; // Still increment the count even if we couldn't fully populate
 	}
 	memset(newProcessHistory->ImageLoadHistory, 0, sizeof(IMAGE_LOAD_HISTORY_ENTRY));
 
 	InitializeListHead(RCAST<PLIST_ENTRY>(newProcessHistory->ImageLoadHistory));
-
-	//
-	// Initialize this last so we don't have to delete it if anything failed.
-	//
-	// We're using the global process lock instead of individual image history locks
-
-	//
-	// Grab a lock to add an entry.
-	//
-	AcquireProcessLock();
-
-	// InsertTailList(RCAST<PLIST_ENTRY>(ImageFilter::ProcessHistoryHead), RCAST<PLIST_ENTRY>(newProcessHistory));
-	ImageFilter::ProcessHistorySize++;
-
-	ReleaseProcessLock();
 
 	//
 	// Audit the stack.
@@ -686,6 +723,21 @@ VOID ImageFilter::AddProcessToHistory(
 													newProcessHistory->CallerStackHistory,
 													newProcessHistory->CallerStackHistorySize);
 	}
+
+Increment:
+	// Important: Make sure we increment the size AFTER successfully setting up the entry
+	AcquireProcessLock();
+	// Double-check we weren't reentered and the size changed while we were processing
+	if (ImageFilter::ProcessHistorySize == newIndex) {
+		ImageFilter::ProcessHistorySize++;
+		DBGPRINT("ImageFilter!AddProcessToHistory: Incremented ProcessHistorySize to %llu", 
+		        ImageFilter::ProcessHistorySize);
+	} else {
+		DBGPRINT("ImageFilter!AddProcessToHistory: Size changed during processing! Expected %llu, current %llu", 
+		        newIndex, ImageFilter::ProcessHistorySize);
+	}
+	ReleaseProcessLock();
+	
 Exit:
 	return; // Return instead of trying to free memory that's part of the array
 }
@@ -759,19 +811,56 @@ typedef struct _PS_CREATE_NOTIFY_INFO {
 	_Inout_ NTSTATUS CreationStatus;
 } PS_CREATE_NOTIFY_INFO, *PPS_CREATE_NOTIFY_INFO;
 */
+/**
+	Notify routine called on new process execution.
+	@param Process - The EPROCESS structure of the new/terminating process.
+	@param ProcessId - The new child's process ID.
+	@param CreateInfo - Information about the process being created.
+*/
 VOID ImageFilter::CreateProcessNotifyRoutine(
 	_In_ PEPROCESS Process,
 	_In_ HANDLE ProcessId,
 	_In_ PPS_CREATE_NOTIFY_INFO CreateInfo)
 {
 	UNREFERENCED_PARAMETER(Process);
-	//
-	// If a new process is being created, add it to the history of processes.
-	//
+	
+	// Add extensive debug logging
 	if (CreateInfo)
 	{
+		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: New process %p being created", ProcessId);
+		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Parent PID=%p", CreateInfo->ParentProcessId);
+		
+		if (CreateInfo->ImageFileName)
+		{
+			// Calculate length safely
+			SIZE_T len = CreateInfo->ImageFileName->Length / sizeof(WCHAR);
+			WCHAR* tempBuffer = (WCHAR*)ExAllocatePool2(POOL_FLAG_PAGED, 
+			                                           (len + 1) * sizeof(WCHAR), 
+			                                           'tImP');
+			if (tempBuffer)
+			{
+				// Copy safely and null terminate
+				RtlCopyMemory(tempBuffer, CreateInfo->ImageFileName->Buffer, len * sizeof(WCHAR));
+				tempBuffer[len] = L'\0';
+				
+				DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Image=%ws", tempBuffer);
+				
+				ExFreePoolWithTag(tempBuffer, 'tImP');
+			}
+		}
+		
+		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Before adding to history, current count=%llu",
+		         ImageFilter::ProcessHistorySize);
+		
+		//
+		// Add process to our tracking history
+		//
 		ImageFilter::AddProcessToHistory(ProcessId, CreateInfo);
-		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Registered process %p.", ProcessId);
+		
+		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: After adding to history, new count=%llu",
+		         ImageFilter::ProcessHistorySize);
+		
+		DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Successfully registered process %p.", ProcessId);
 	}
 	else
 	{
@@ -781,7 +870,12 @@ VOID ImageFilter::CreateProcessNotifyRoutine(
 		//
 		ImageFilter::TerminateProcessInHistory(ProcessId);
 	}
+	
+	// Log current count after all processing
+	DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Final process history size=%llu", 
+	        ImageFilter::ProcessHistorySize);
 }
+
 
 /**
  * Get image load history for a specific process or all processes
@@ -1213,6 +1307,13 @@ typedef struct ProcessSummaryEntry
 	BOOLEAN ProcessTerminated;		// Whether or not the process has terminated.
 } PROCESS_SUMMARY_ENTRY, * PPROCESS_SUMMARY_ENTRY;
 */
+/**
+	Get the summary for MaxProcessSummaries processes starting from the top of list + SkipCount.
+	@param SkipCount - How many processes to skip in the list.
+	@param ProcessSummaries - Caller-supplied array of process summaries that this function fills.
+	@param MaxProcessSumaries - Maximum number of process summaries that the array allows for.
+	@return The actual number of summaries returned.
+*/
 ULONG
 ImageFilter::GetProcessHistorySummary(
 	_In_ ULONG SkipCount,
@@ -1224,11 +1325,23 @@ ImageFilter::GetProcessHistorySummary(
 	ULONG actualFilledSummaries;
 	NTSTATUS status;
 
+	// Add debug logging
+	DBGPRINT("ImageFilter!GetProcessHistorySummary: Called with SkipCount=%lu, MaxProcessSummaries=%lu",
+	        SkipCount, MaxProcessSummaries);
+
 	currentProcessIndex = 0;
 	actualFilledSummaries = 0;
 
 	if (ImageFilter::destroying)
 	{
+		DBGPRINT("ImageFilter!GetProcessHistorySummary: ImageFilter is being destroyed, returning 0");
+		return 0;
+	}
+
+	// Validate input parameters
+	if (ProcessSummaries == NULL || MaxProcessSummaries == 0)
+	{
+		DBGPRINT("ImageFilter!GetProcessHistorySummary: Invalid parameters, returning 0");
 		return 0;
 	}
 
@@ -1236,6 +1349,12 @@ ImageFilter::GetProcessHistorySummary(
 	// Acquire a shared lock to iterate processes.
 	//
 	AcquireProcessLock();
+
+	//
+	// Log current state
+	//
+	DBGPRINT("ImageFilter!GetProcessHistorySummary: Current ProcessHistorySize=%llu", 
+	        ImageFilter::ProcessHistorySize);
 
 	//
 	// Iterate histories for the MaxProcessSummaries processes after SkipCount processes.
@@ -1246,6 +1365,11 @@ ImageFilter::GetProcessHistorySummary(
 		for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize && actualFilledSummaries < MaxProcessSummaries; i++)
 		{
 			currentProcessHistory = &ImageFilter::ProcessHistory[i];
+			
+			// Debug each process entry
+			DBGPRINT("ImageFilter!GetProcessHistorySummary: [%llu] PID=%p, Terminated=%d", 
+			        i, currentProcessHistory->ProcessId, currentProcessHistory->ProcessTerminated);
+			
 			if (currentProcessIndex >= SkipCount)
 			{
 				//
@@ -1255,23 +1379,66 @@ ImageFilter::GetProcessHistorySummary(
 				ProcessSummaries[actualFilledSummaries].ProcessId = currentProcessHistory->ProcessId;
 				ProcessSummaries[actualFilledSummaries].ProcessTerminated = currentProcessHistory->ProcessTerminated;
 
+				// Initialize the ImageFileName to ensure it's always null-terminated
+				RtlZeroMemory(ProcessSummaries[actualFilledSummaries].ImageFileName, MAX_PATH * sizeof(WCHAR));
+
 				if (currentProcessHistory->ProcessImageFileName)
 				{
 					//
 					// Copy the image name.
 					//
-					status = RtlStringCbCopyUnicodeString(RCAST<NTSTRSAFE_PWSTR>(&ProcessSummaries[actualFilledSummaries].ImageFileName), MAX_PATH * sizeof(WCHAR), currentProcessHistory->ProcessImageFileName);
-					if (NT_SUCCESS(status) == FALSE)
+					DBGPRINT("ImageFilter!GetProcessHistorySummary: Copying image name for entry %lu",
+					        actualFilledSummaries);
+					        
+					// Check if the ProcessImageFileName is valid
+					if (currentProcessHistory->ProcessImageFileName->Buffer != NULL &&
+					    currentProcessHistory->ProcessImageFileName->Length > 0 &&
+					    currentProcessHistory->ProcessImageFileName->Length <= MAX_PATH * sizeof(WCHAR))
 					{
-						DBGPRINT("ImageFilter!GetProcessHistorySummary: Failed to copy the image file name with status 0x%X.", status);
-						break;
+						status = RtlStringCbCopyUnicodeString(
+						    RCAST<NTSTRSAFE_PWSTR>(&ProcessSummaries[actualFilledSummaries].ImageFileName), 
+						    MAX_PATH * sizeof(WCHAR), 
+						    currentProcessHistory->ProcessImageFileName);
+						    
+						if (NT_SUCCESS(status) == FALSE)
+						{
+							DBGPRINT("ImageFilter!GetProcessHistorySummary: Failed to copy the image file name with status 0x%X.",
+							        status);
+							// Continue anyway - we'll have a process with an empty name
+						}
+						else
+						{
+							DBGPRINT("ImageFilter!GetProcessHistorySummary: Image name copied: %ws",
+							        ProcessSummaries[actualFilledSummaries].ImageFileName);
+						}
+					}
+					else
+					{
+						DBGPRINT("ImageFilter!GetProcessHistorySummary: Invalid ProcessImageFileName for PID %p",
+						        currentProcessHistory->ProcessId);
+						// Set a default name
+						wcscpy_s(ProcessSummaries[actualFilledSummaries].ImageFileName, MAX_PATH, L"[Unknown Process]");
 					}
 				}
+				else
+				{
+					DBGPRINT("ImageFilter!GetProcessHistorySummary: ProcessImageFileName is NULL for PID %p",
+					        currentProcessHistory->ProcessId);
+					// Set a default name
+					wcscpy_s(ProcessSummaries[actualFilledSummaries].ImageFileName, MAX_PATH, L"[Unknown Process]");
+				}
+				
 				actualFilledSummaries++;
+				DBGPRINT("ImageFilter!GetProcessHistorySummary: Added entry %lu, now have %lu entries",
+				        actualFilledSummaries-1, actualFilledSummaries);
 			}
 			currentProcessIndex++;
 			// Already advancing in the for loop
 		}
+	}
+	else
+	{
+		DBGPRINT("ImageFilter!GetProcessHistorySummary: ProcessHistory is NULL");
 	}
 
 	//
@@ -1279,6 +1446,7 @@ ImageFilter::GetProcessHistorySummary(
 	//
 	ReleaseProcessLock();
 
+	DBGPRINT("ImageFilter!GetProcessHistorySummary: Returning %lu process summaries", actualFilledSummaries);
 	return actualFilledSummaries;
 }
 
