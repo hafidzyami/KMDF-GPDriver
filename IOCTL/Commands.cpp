@@ -537,10 +537,14 @@ void CommandDllMonitor(ULONG ProcessId)
                         break;
                 }
 
+                // Format the base address properly
+                char addressBuffer[32];
+                sprintf_s(addressBuffer, "0x%016llx", (unsigned long long)img.ImageBase);
+
                 // Print the base info
                 std::cout << std::left
                         << std::setw(8) << img.ProcessId
-                        << std::setw(16) << "0x" << std::hex << img.ImageBase << std::dec
+                        << std::setw(16) << addressBuffer
                         << std::setw(10) << (img.ImageSize / 1024) << "K"
                         << std::setw(7) << (img.RemoteLoad ? "Yes" : "No")
                         << std::setw(8) << riskStr
@@ -629,7 +633,6 @@ void CommandDllMonitor(ULONG ProcessId)
 }
 
 // Command: thread-monitor
-// Command: thread-monitor
 void CommandThreadMonitor(ULONG ProcessId)
 {
     HANDLE hDevice = OpenDriverHandle();
@@ -709,12 +712,16 @@ void CommandThreadMonitor(ULONG ProcessId)
                         riskStr = "NONE";
                         break;
                 }
+                
+                // Format the start address properly
+                char addressBuffer[32];
+                sprintf_s(addressBuffer, "0x%016llx", (unsigned long long)thread.StartAddress);
 
                 // Print base thread info
                 std::cout << std::left
                         << std::setw(8) << thread.ThreadId
                         << std::setw(8) << thread.ProcessId
-                        << std::setw(18) << "0x" << std::hex << thread.StartAddress << std::dec
+                        << std::setw(18) << addressBuffer
                         << std::setw(8) << thread.CreatorProcessId
                         << std::setw(7) << (thread.IsRemoteThread ? "Yes" : "No")
                         << std::setw(8) << riskStr

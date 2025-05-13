@@ -1,6 +1,7 @@
 #pragma warning(suppress: 4996)
 #include "pch.h"
 #include "ImageFilter.h"
+#include "fixed_structures.h"
 
 #ifndef _countof
 #define _countof(array) (sizeof(array) / sizeof(array[0]))
@@ -40,9 +41,11 @@ ThreadCreateNotifyWorkItemRoutine(
     ULONG threadCreateStackSize = 64;
     PUNICODE_STRING threadCallerName = NULL;
     PUNICODE_STRING threadTargetName = NULL;
+    PPROCESS_HISTORY_ENTRY targetProcessHistory = NULL;
     
     if (workItem == NULL)
     {
+        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: WorkItem is NULL");
         return;
     }
 
@@ -92,12 +95,12 @@ ThreadCreateNotifyWorkItemRoutine(
     {
         // Audit the target's start address
         ImageFilter::detector->AuditUserPointer(ThreadCreate, 
-                                              threadStartAddress, 
-                                              workItem->CallerProcessId, 
-                                              threadCallerName, 
-                                              threadTargetName, 
-                                              threadCreateStack, 
-                                              threadCreateStackSize);
+                                            threadStartAddress, 
+                                            workItem->CallerProcessId, 
+                                            threadCallerName, 
+                                            threadTargetName, 
+                                            threadCreateStack, 
+                                            threadCreateStackSize);
 
         // Audit the stack
         ImageFilter::detector->AuditUserStackWalk(ThreadCreate,
@@ -109,13 +112,109 @@ ThreadCreateNotifyWorkItemRoutine(
 
         // Check if this is a remote operation
         ImageFilter::detector->AuditCallerProcessId(ThreadCreate, 
-                                                  workItem->CallerProcessId, 
-                                                  workItem->ProcessId, 
-                                                  threadCallerName, 
-                                                  threadTargetName, 
-                                                  threadCreateStack, 
-                                                  threadCreateStackSize);
+                                                workItem->CallerProcessId, 
+                                                workItem->ProcessId, 
+                                                threadCallerName, 
+                                                threadTargetName, 
+                                                threadCreateStack, 
+                                                threadCreateStackSize);
     }
+
+    // Find the target process in our history
+    KeAcquireSpinLock(&ImageFilter::ProcessHistoryLock, &ImageFilter::ProcessHistoryOldIrql);
+    
+    if (ImageFilter::ProcessHistory != NULL)
+    {
+        for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
+        {
+            if (ImageFilter::ProcessHistory[i].ProcessId == workItem->ProcessId && 
+                ImageFilter::ProcessHistory[i].ProcessTerminated == FALSE)
+            {
+                targetProcessHistory = &ImageFilter::ProcessHistory[i];
+                break;
+            }
+        }
+    }
+    
+    // If we found the process history, store the thread info
+    if (targetProcessHistory != NULL)
+    {
+        // Check if we need to allocate thread history array
+        if (targetProcessHistory->ThreadHistory == NULL)
+        {
+            // Define initial capacity
+            ULONG initialCapacity = 16;
+            
+            // Allocate initial thread history array
+            targetProcessHistory->ThreadHistory = (PTHREAD_CREATE_ENTRY)ExAllocatePool2(
+                POOL_FLAG_PAGED, 
+                sizeof(THREAD_CREATE_ENTRY) * initialCapacity, 
+                'ThHI');
+                
+            if (targetProcessHistory->ThreadHistory != NULL)
+            {
+                // Clear the newly allocated memory
+                RtlZeroMemory(targetProcessHistory->ThreadHistory, 
+                             sizeof(THREAD_CREATE_ENTRY) * initialCapacity);
+                             
+                // Initialize the count and track how many entries we can store
+                targetProcessHistory->ThreadHistorySize = 0;
+                
+                DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Allocated thread history array for PID %p with capacity %lu", 
+                        workItem->ProcessId, initialCapacity);
+            }
+            else
+            {
+                DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to allocate thread history array");
+                KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
+                goto Exit;
+            }
+        }
+        
+        // Add this thread to the history if we have space
+        // Note: This simple implementation doesn't resize the array when full
+        if (targetProcessHistory->ThreadHistorySize < 16) // Only use the first 16 entries for simplicity
+        {
+            THREAD_CREATE_ENTRY* threadEntry = &targetProcessHistory->ThreadHistory[targetProcessHistory->ThreadHistorySize];
+            
+            // Fill in thread details
+            threadEntry->ThreadId = workItem->ThreadId;
+            threadEntry->CreatorProcessId = workItem->CallerProcessId;
+            threadEntry->StartAddress = threadStartAddress;
+            threadEntry->IsRemoteThread = (workItem->CallerProcessId != workItem->ProcessId);
+            
+            // Set creation time to current time
+            KeQuerySystemTime(&threadEntry->CreationTime);
+            
+            // Increment thread history size
+            targetProcessHistory->ThreadHistorySize++;
+            
+            DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Added thread ID %p to history for PID %p (count: %lu)",
+                    workItem->ThreadId, workItem->ProcessId, targetProcessHistory->ThreadHistorySize);
+            
+            // If this is a remote thread, we could log that separately
+            if (threadEntry->IsRemoteThread) 
+            {
+                DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Remote thread %p created in process %p from process %p",
+                        workItem->ThreadId, workItem->ProcessId, workItem->CallerProcessId);
+                
+                // Note: In the original code, this would increment TDriverClass::RemoteThreadsDetected
+                // but we're not using that here since it causes compile errors
+            }
+        }
+        else
+        {
+            DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Thread history array full for PID %p (size: %lu)",
+                    workItem->ProcessId, targetProcessHistory->ThreadHistorySize);
+        }
+    }
+    else
+    {
+        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Unable to find process history for PID %p", 
+                workItem->ProcessId);
+    }
+    
+    KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
 
 Exit:
     // Free resources
@@ -138,7 +237,6 @@ Exit:
     // Free the work item
     ExFreePoolWithTag(workItem, 'ThWI');
 }
-
 
 // Work item routine for deferred image processing
 VOID
@@ -1850,22 +1948,30 @@ VOID ImageFilter::ThreadNotifyRoutine(
         return;
     }
 
-    // We don't care about thread termination or kernel-mode threads
-    if (Create == FALSE || ExGetPreviousMode() == KernelMode)
+    // We don't care about thread termination
+    if (Create == FALSE)
     {
         return;
     }
 
+    // Skip kernel-mode threads
+    if (ExGetPreviousMode() == KernelMode)
+    {
+        return;
+    }
+
+    // Update thread count statistics
     ULONG processThreadCount = 0;
+    ImageFilter::AddProcessThreadCount(ProcessId, &processThreadCount);
     
-    // If we can't find the process or it's the first thread of the process, skip it
-    if (ImageFilter::AddProcessThreadCount(ProcessId, &processThreadCount) == FALSE ||
-        processThreadCount <= 1)
-    {
-        return;
-    }
+    // Note: In the original code, this would increment TDriverClass::ThreadsMonitored
+    // but we're not using that here since it causes compile errors
+    
+    // DEBUG: Log thread creation 
+    DBGPRINT("ImageFilter!ThreadNotifyRoutine: Thread %p created in process %p (thread count: %lu)",
+            ThreadId, ProcessId, processThreadCount);
 
-    // Instead of creating a system thread, use a work item which is safer
+    // Create a work item to process at PASSIVE_LEVEL
     PTHREAD_CREATE_NOTIFY_WORKITEM workItem = (PTHREAD_CREATE_NOTIFY_WORKITEM)ExAllocatePool2(
         POOL_FLAG_NON_PAGED,
         sizeof(THREAD_CREATE_NOTIFY_WORKITEM),
@@ -1888,8 +1994,10 @@ VOID ImageFilter::ThreadNotifyRoutine(
                         workItem);
 
     // Queue the work item to process this notification at PASSIVE_LEVEL
-    // without recursively calling the notification routine
     ExQueueWorkItem(&workItem->WorkItem, DelayedWorkQueue);
+    
+    DBGPRINT("ImageFilter!ThreadNotifyRoutine: Queued work item for thread ID %p in process %p",
+            ThreadId, ProcessId);
 }
 
 /**
