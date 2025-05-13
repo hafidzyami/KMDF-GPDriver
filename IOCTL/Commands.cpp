@@ -11,14 +11,31 @@
 #include <Windows.h>
 
 // Convert LARGE_INTEGER time to readable format
+// Convert LARGE_INTEGER time to readable format
 std::wstring FormatTime(const LARGE_INTEGER &time)
 {
+    // If time is zero or very small (invalid), return placeholder
+    if (time.QuadPart == 0 || time.QuadPart < 10000000) // Less than 1 second
+    {
+        return L"N/A";
+    }
+
     SYSTEMTIME systemTime;
     FILETIME fileTime;
     fileTime.dwLowDateTime = time.LowPart;
     fileTime.dwHighDateTime = time.HighPart;
 
-    FileTimeToSystemTime(&fileTime, &systemTime);
+    // Convert to local time
+    FILETIME localFileTime;
+    if (FileTimeToLocalFileTime(&fileTime, &localFileTime))
+    {
+        fileTime = localFileTime;
+    }
+
+    if (!FileTimeToSystemTime(&fileTime, &systemTime))
+    {
+        return L"Invalid Time";
+    }
 
     wchar_t buffer[100];
     swprintf_s(buffer, L"%04d-%02d-%02d %02d:%02d:%02d",
@@ -29,9 +46,11 @@ std::wstring FormatTime(const LARGE_INTEGER &time)
 }
 
 // Convert std::string to std::wstring
-std::wstring StringToWString(const std::string& str) {
-    if (str.empty()) return std::wstring();
-    
+std::wstring StringToWString(const std::string &str)
+{
+    if (str.empty())
+        return std::wstring();
+
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
     std::wstring wstr(size_needed, 0);
     MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstr[0], size_needed);
@@ -39,9 +58,11 @@ std::wstring StringToWString(const std::string& str) {
 }
 
 // Convert std::wstring to std::string
-std::string WStringToString(const std::wstring& wstr) {
-    if (wstr.empty()) return std::string();
-    
+std::string WStringToString(const std::wstring &wstr)
+{
+    if (wstr.empty())
+        return std::string();
+
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
     std::string str(size_needed, 0);
     WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &str[0], size_needed, NULL, NULL);
@@ -108,51 +129,60 @@ void CommandProcessList()
         return;
     }
 
-    // First get the size needed
+    // First get just the count in a small buffer
     DWORD bytesReturned = 0;
-    DWORD bufferSize = sizeof(PROCESS_LIST); // Minimum size for count
-    BYTE *buffer = nullptr;
-    BOOL success = false;
+    DWORD initialBufferSize = sizeof(PROCESS_LIST); // Just enough for Count
+    BYTE *countBuffer = new BYTE[initialBufferSize];
+    BOOL success = DeviceIoControl(
+        hDevice,
+        IOCTL_GET_PROCESS_LIST,
+        NULL, 0,
+        countBuffer, initialBufferSize,
+        &bytesReturned,
+        NULL);
 
-    // Try first with a small buffer to get the count
-    buffer = new BYTE[bufferSize];
+    PPROCESS_LIST pInitialList = reinterpret_cast<PPROCESS_LIST>(countBuffer);
+    ULONG processCount = 0;
+    
+    if (success || GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+    {
+        // Extract the count of processes
+        processCount = pInitialList->Count;
+        std::cout << "Total processes found: " << processCount << std::endl;
+    }
+    else
+    {
+        std::cerr << "Failed to get process count: " << GetLastErrorAsString() << std::endl;
+        delete[] countBuffer;
+        CloseDriverHandle(hDevice);
+        return;
+    }
+    delete[] countBuffer;
+    
+    // Now allocate enough space for all the processes
+    // Make sure to use at least 50 as a minimum even if count is less
+    ULONG allocCount = max(50, processCount + 10); // Add some extra space just in case
+    DWORD fullBufferSize = sizeof(PROCESS_LIST) + (allocCount - 1) * sizeof(PROCESS_INFO);
+    
+    std::cout << "Allocating buffer for " << allocCount << " processes (" << fullBufferSize << " bytes)" << std::endl;
+    
+    BYTE *fullBuffer = new BYTE[fullBufferSize];
     success = DeviceIoControl(
         hDevice,
         IOCTL_GET_PROCESS_LIST,
         NULL, 0,
-        buffer, bufferSize,
+        fullBuffer, fullBufferSize,
         &bytesReturned,
         NULL);
 
-    if (!success && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-    {
-        // Get the required size from the returned data
-        PPROCESS_LIST pList = reinterpret_cast<PPROCESS_LIST>(buffer);
-        bufferSize = sizeof(PROCESS_LIST) + (pList->Count - 1) * sizeof(PROCESS_INFO);
-
-        // Reallocate buffer with correct size
-        delete[] buffer;
-        buffer = new BYTE[bufferSize];
-
-        // Try again with correctly sized buffer
-        success = DeviceIoControl(
-            hDevice,
-            IOCTL_GET_PROCESS_LIST,
-            NULL, 0,
-            buffer, bufferSize,
-            &bytesReturned,
-            NULL);
-    }
-
     if (success)
     {
-        PPROCESS_LIST pList = reinterpret_cast<PPROCESS_LIST>(buffer);
+        PPROCESS_LIST pList = reinterpret_cast<PPROCESS_LIST>(fullBuffer);
 
         // Print header
         std::cout << std::left << std::setw(8) << "PID"
                   << std::setw(8) << "PPID"
                   << std::setw(30) << "Image Name"
-                  << std::setw(20) << "User"
                   << "Creation Time" << std::endl;
         std::cout << std::string(80, '-') << std::endl;
 
@@ -170,24 +200,24 @@ void CommandProcessList()
                       << std::setw(8) << proc.ProcessId
                       << std::setw(8) << proc.ParentProcessId
                       << std::setw(30) << WStringToString(fileName)
-                      << std::setw(20) << WStringToString(proc.UserName)
                       << WStringToString(FormatTime(proc.CreationTime))
                       << (proc.IsTerminated ? " [Terminated]" : "")
                       << std::endl;
         }
 
         std::cout << std::endl
-                  << "Total processes: " << pList->Count << std::endl;
+                  << "Total processes returned: " << pList->Count << std::endl;
     }
     else
     {
         std::cerr << "Failed to get process list: " << GetLastErrorAsString() << std::endl;
     }
 
-    delete[] buffer;
+    delete[] fullBuffer;
     CloseDriverHandle(hDevice);
 }
 
+// Command: process-info
 // Command: process-info
 void CommandProcessInfo(ULONG ProcessId)
 {
@@ -201,7 +231,7 @@ void CommandProcessInfo(ULONG ProcessId)
     PROCESS_DETAILS_REQUEST request;
     request.ProcessId = ProcessId;
 
-    // Buffer for the result - we don't know exact size, so allocate a reasonable amount
+    // Buffer for the result
     const DWORD bufferSize = 4096;
     BYTE buffer[bufferSize] = {0};
     DWORD bytesReturned = 0;
@@ -222,15 +252,68 @@ void CommandProcessInfo(ULONG ProcessId)
         // Print detailed information
         std::cout << "Process Details" << std::endl;
         std::cout << "==============" << std::endl;
-        std::cout << "Process ID:      " << pInfo->ProcessId << std::endl;
-        std::cout << "Parent ID:       " << pInfo->ParentProcessId << std::endl;
-        std::cout << "Image Path:      " << WStringToString(pInfo->ImagePath) << std::endl;
-        std::cout << "Command Line:    " << WStringToString(pInfo->CommandLine) << std::endl;
-        std::cout << "Creation Time:   " << WStringToString(FormatTime(pInfo->CreationTime)) << std::endl;
-        std::cout << "User Name:       " << WStringToString(pInfo->UserName) << std::endl;
-        std::cout << "Status:          " << (pInfo->IsTerminated ? "Terminated" : "Running") << std::endl;
-
-        // Additional information could be displayed here, depending on what you get back from the driver
+        std::cout << "Process ID:             " << pInfo->ProcessId << std::endl;
+        std::cout << "Parent ID:              " << pInfo->ParentProcessId << std::endl;
+        std::cout << "Image Path:             " << WStringToString(pInfo->ImagePath) << std::endl;
+        std::cout << "Command Line:           " << WStringToString(pInfo->CommandLine) << std::endl;
+        std::cout << "Creation Time:          " << WStringToString(FormatTime(pInfo->CreationTime)) << std::endl;
+        std::cout << "Status:                 " << (pInfo->IsTerminated ? "Terminated" : "Running") << std::endl;
+        
+        // Malware detection information
+        std::cout << std::endl;
+        std::cout << "Security Analysis" << std::endl;
+        std::cout << "================" << std::endl;
+        std::cout << "Anomaly Score:          " << pInfo->AnomalyScore << "/100" << 
+            (pInfo->AnomalyScore > 70 ? " [HIGH RISK]" : 
+             pInfo->AnomalyScore > 40 ? " [SUSPICIOUS]" : 
+             pInfo->AnomalyScore > 20 ? " [LOW RISK]" : " [NORMAL]") << std::endl;
+        
+        std::cout << "Loaded Modules:         " << pInfo->LoadedModuleCount << std::endl;
+        std::cout << "Thread Count:           " << pInfo->ThreadCount << std::endl;
+        
+        if (pInfo->HasRemoteLoadedModules)
+        {
+            std::cout << "Remote Loaded Modules:   " << pInfo->RemoteLoadCount << " [SUSPICIOUS]" << std::endl;
+            std::cout << "First Remote Module:     " << WStringToString(pInfo->FirstRemoteModule) << std::endl;
+        }
+        else
+        {
+            std::cout << "Remote Loaded Modules:   None" << std::endl;
+        }
+        
+        if (pInfo->HasRemoteCreatedThreads)
+        {
+            std::cout << "Remote Created Threads:  " << pInfo->RemoteThreadCount << " [SUSPICIOUS]" << std::endl;
+            std::cout << "First Thread Creator:    PID " << pInfo->FirstRemoteThreadCreator << std::endl;
+            std::cout << "First Thread Address:    0x" << std::hex << pInfo->FirstRemoteThreadAddress << std::dec << std::endl;
+        }
+        else
+        {
+            std::cout << "Remote Created Threads:  None" << std::endl;
+        }
+        
+        // Security recommendations
+        if (pInfo->AnomalyScore > 40)
+        {
+            std::cout << std::endl;
+            std::cout << "Security Recommendations:" << std::endl;
+            std::cout << "-------------------------" << std::endl;
+            
+            if (pInfo->HasRemoteLoadedModules)
+            {
+                std::cout << "* Suspicious remote DLL injection detected!" << std::endl;
+                std::cout << "  This is a common technique used by malware and hackers." << std::endl;
+            }
+            
+            if (pInfo->HasRemoteCreatedThreads)
+            {
+                std::cout << "* Suspicious remote thread creation detected!" << std::endl;
+                std::cout << "  This could indicate code injection or unauthorized access." << std::endl;
+            }
+            
+            // Add more specific recommendations based on other factors
+            std::cout << "* Consider investigating this process further or terminating it if suspicious." << std::endl;
+        }
     }
     else
     {
@@ -250,7 +333,8 @@ void CommandRegistryMonitor(ULONG Count)
     }
 
     // Allocate a buffer for the results
-    DWORD bufferSize = sizeof(REGISTRY_ACTIVITY_LIST) + (Count - 1) * sizeof(REGISTRY_ACTIVITY);
+    DWORD initialProcessCount = 100; // Expect up to 100 processes initially
+    DWORD bufferSize = sizeof(PROCESS_LIST) + (initialProcessCount - 1) * sizeof(PROCESS_INFO);
     BYTE *buffer = new BYTE[bufferSize];
     DWORD bytesReturned = 0;
 
@@ -382,13 +466,19 @@ void CommandDllMonitor(ULONG ProcessId)
         return;
     }
 
-    // First get the size needed
-    DWORD bytesReturned = 0;
-    DWORD bufferSize = sizeof(IMAGE_LOAD_LIST); // Minimum size for count
+    // Allocate a sufficiently large buffer for numerous DLLs
+    DWORD bufferSize = sizeof(IMAGE_LOAD_LIST) + 999 * sizeof(IMAGE_LOAD_INFO); // Space for 1000 DLLs
     BYTE *buffer = nullptr;
+    DWORD bytesReturned = 0;
     BOOL success = false;
 
-    // Try first with a small buffer
+    std::cout << "Searching for loaded modules";
+    if (ProcessId != 0) {
+        std::cout << " in process " << ProcessId;
+    }
+    std::cout << "..." << std::endl;
+
+    // Allocate buffer and make the IOCTL call
     buffer = new BYTE[bufferSize];
     success = DeviceIoControl(
         hDevice,
@@ -398,63 +488,136 @@ void CommandDllMonitor(ULONG ProcessId)
         &bytesReturned,
         NULL);
 
-    if (!success && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-    {
-        // Get the required size from the returned data
-        PIMAGE_LOAD_LIST pList = reinterpret_cast<PIMAGE_LOAD_LIST>(buffer);
-        bufferSize = sizeof(IMAGE_LOAD_LIST) + (pList->Count - 1) * sizeof(IMAGE_LOAD_INFO);
-
-        // Reallocate buffer with correct size
-        delete[] buffer;
-        buffer = new BYTE[bufferSize];
-
-        // Try again with correctly sized buffer
-        success = DeviceIoControl(
-            hDevice,
-            IOCTL_GET_IMAGE_LOAD_HISTORY,
-            &ProcessId, sizeof(ProcessId),
-            buffer, bufferSize,
-            &bytesReturned,
-            NULL);
-    }
-
     if (success)
     {
         PIMAGE_LOAD_LIST pList = reinterpret_cast<PIMAGE_LOAD_LIST>(buffer);
 
-        // Print header
-        std::cout << std::left << std::setw(8) << "PID"
-                  << std::setw(16) << "Base Address"
-                  << std::setw(10) << "Size"
-                  << std::setw(5) << "Remote"
-                  << std::setw(20) << "Load Time"
-                  << "Image Path" << std::endl;
-        std::cout << std::string(100, '-') << std::endl;
-
-        // Print each image load
-        for (ULONG i = 0; i < pList->Count; i++)
+        if (pList->Count == 0)
         {
-            IMAGE_LOAD_INFO &img = pList->LoadedImages[i];
+            std::cout << "No loaded modules found." << std::endl;
+        }
+        else
+        {
+            // Print header
+            std::cout << std::left << std::setw(8) << "PID"
+                    << std::setw(16) << "Base Address"
+                    << std::setw(10) << "Size"
+                    << std::setw(7) << "Remote"
+                    << std::setw(8) << "Risk"
+                    << "Image Path / Flags" << std::endl;
+            std::cout << std::string(120, '-') << std::endl;
 
-            std::cout << std::left
-                      << std::setw(8) << img.ProcessId
-                      << std::setw(16) << std::hex << img.ImageBase << std::dec
-                      << std::setw(10) << img.ImageSize
-                      << std::setw(5) << (img.RemoteLoad ? "Yes" : "No")
-                      << std::setw(20) << WStringToString(FormatTime(img.LoadTime))
-                      << WStringToString(img.ImagePath) << std::endl;
+            // Count risk levels
+            int highRiskCount = 0;
+            int mediumRiskCount = 0;
+            int lowRiskCount = 0;
 
-            // If it's a remote load, show the process that loaded it
-            if (img.RemoteLoad)
+            // Print each image load
+            for (ULONG i = 0; i < pList->Count; i++)
             {
-                std::cout << std::string(8, ' ') << "Loaded by PID: " << img.CallerProcessId << std::endl;
+                IMAGE_LOAD_INFO &img = pList->LoadedImages[i];
+
+                // Get risk level string
+                std::string riskStr;
+                switch(img.RiskLevel) {
+                    case 3: 
+                        riskStr = "HIGH";
+                        highRiskCount++;
+                        break;
+                    case 2: 
+                        riskStr = "MEDIUM";
+                        mediumRiskCount++;
+                        break;
+                    case 1: 
+                        riskStr = "LOW";
+                        lowRiskCount++;
+                        break;
+                    default: 
+                        riskStr = "NONE";
+                        break;
+                }
+
+                // Print the base info
+                std::cout << std::left
+                        << std::setw(8) << img.ProcessId
+                        << std::setw(16) << "0x" << std::hex << img.ImageBase << std::dec
+                        << std::setw(10) << (img.ImageSize / 1024) << "K"
+                        << std::setw(7) << (img.RemoteLoad ? "Yes" : "No")
+                        << std::setw(8) << riskStr
+                        << WStringToString(img.ImagePath);
+
+                // Print flags if present
+                if (img.Flags != 0) {
+                    std::cout << std::endl << std::string(49, ' ') << "Flags: ";
+                    
+                    if (img.Flags & IMAGE_FLAG_REMOTE_LOADED)
+                        std::cout << "[Remote] ";
+                    if (img.Flags & IMAGE_FLAG_NON_SYSTEM)
+                        std::cout << "[Non-System] ";
+                    if (img.Flags & IMAGE_FLAG_SUSPICIOUS_LOCATION)
+                        std::cout << "[Suspicious Location] ";
+                    if (img.Flags & IMAGE_FLAG_POTENTIAL_HIJACK)
+                        std::cout << "[POTENTIAL HIJACK] ";
+                    if (img.Flags & IMAGE_FLAG_NETWORK_RELATED)
+                        std::cout << "[Network] ";
+                    if (img.Flags & IMAGE_FLAG_HOOK_RELATED)
+                        std::cout << "[Hook Related] ";
+                    if (img.Flags & IMAGE_FLAG_UNSIGNED)
+                        std::cout << "[Unsigned] ";
+                }
+
+                // If it's a remote load, show the process that loaded it
+                if (img.RemoteLoad)
+                {
+                    std::cout << std::endl << std::string(49, ' ') 
+                              << "Loaded by PID: " << img.CallerProcessId;
+                }
+                
+                std::cout << std::endl;
+                
+                // Add separator for high risk items
+                if (img.RiskLevel == 3) {
+                    std::cout << std::string(120, '=') << std::endl;
+                }
+            }
+
+            std::cout << std::endl
+                    << "Total loaded modules: " << pList->Count
+                    << (ProcessId ? std::string(" for process ") + std::to_string(ProcessId) : "")
+                    << std::endl;
+                    
+            // Print risk summary
+            if (highRiskCount > 0 || mediumRiskCount > 0) {
+                std::cout << std::endl << "Risk Summary:" << std::endl;
+                std::cout << "--------------" << std::endl;
+                
+                if (highRiskCount > 0) {
+                    std::cout << "HIGH RISK modules: " << highRiskCount << std::endl;
+                }
+                
+                if (mediumRiskCount > 0) {
+                    std::cout << "MEDIUM RISK modules: " << mediumRiskCount << std::endl;
+                }
+                
+                if (lowRiskCount > 0) {
+                    std::cout << "LOW RISK modules: " << lowRiskCount << std::endl;
+                }
+                
+                // Print security recommendations for high risk items
+                if (highRiskCount > 0) {
+                    std::cout << std::endl << "SECURITY RECOMMENDATIONS:" << std::endl;
+                    std::cout << "-------------------------" << std::endl;
+                    
+                    if (highRiskCount > 0) {
+                        std::cout << "* Investigate HIGH RISK modules as they may indicate code injection or DLL hijacking" << std::endl;
+                    }
+                    
+                    if (mediumRiskCount > 0) {
+                        std::cout << "* Review MEDIUM RISK modules for potentially suspicious behavior" << std::endl;
+                    }
+                }
             }
         }
-
-        std::cout << std::endl
-                  << "Total loaded images: " << pList->Count
-                  << (ProcessId ? std::string(" for process ") + std::to_string(ProcessId) : "")
-                  << std::endl;
     }
     else
     {
@@ -466,6 +629,7 @@ void CommandDllMonitor(ULONG ProcessId)
 }
 
 // Command: thread-monitor
+// Command: thread-monitor
 void CommandThreadMonitor(ULONG ProcessId)
 {
     HANDLE hDevice = OpenDriverHandle();
@@ -474,13 +638,19 @@ void CommandThreadMonitor(ULONG ProcessId)
         return;
     }
 
-    // First get the size needed
-    DWORD bytesReturned = 0;
-    DWORD bufferSize = sizeof(THREAD_LIST); // Minimum size for count
+    // Allocate a sufficiently large buffer for numerous threads
+    DWORD bufferSize = sizeof(THREAD_LIST) + 999 * sizeof(THREAD_INFO); // Space for 1000 threads
     BYTE *buffer = nullptr;
+    DWORD bytesReturned = 0;
     BOOL success = false;
 
-    // Try first with a small buffer
+    std::cout << "Searching for thread creation history";
+    if (ProcessId != 0) {
+        std::cout << " in process " << ProcessId;
+    }
+    std::cout << "..." << std::endl;
+
+    // Allocate buffer and make the IOCTL call
     buffer = new BYTE[bufferSize];
     success = DeviceIoControl(
         hDevice,
@@ -490,57 +660,132 @@ void CommandThreadMonitor(ULONG ProcessId)
         &bytesReturned,
         NULL);
 
-    if (!success && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-    {
-        // Get the required size from the returned data
-        PTHREAD_LIST pList = reinterpret_cast<PTHREAD_LIST>(buffer);
-        bufferSize = sizeof(THREAD_LIST) + (pList->Count - 1) * sizeof(THREAD_INFO);
-
-        // Reallocate buffer with correct size
-        delete[] buffer;
-        buffer = new BYTE[bufferSize];
-
-        // Try again with correctly sized buffer
-        success = DeviceIoControl(
-            hDevice,
-            IOCTL_GET_THREAD_CREATION_HISTORY,
-            &ProcessId, sizeof(ProcessId),
-            buffer, bufferSize,
-            &bytesReturned,
-            NULL);
-    }
-
     if (success)
     {
         PTHREAD_LIST pList = reinterpret_cast<PTHREAD_LIST>(buffer);
 
-        // Print header
-        std::cout << std::left << std::setw(8) << "TID"
-                  << std::setw(8) << "PID"
-                  << std::setw(16) << "Start Address"
-                  << std::setw(8) << "Creator"
-                  << std::setw(8) << "Remote"
-                  << "Creation Time" << std::endl;
-        std::cout << std::string(80, '-') << std::endl;
-
-        // Print each thread
-        for (ULONG i = 0; i < pList->Count; i++)
+        if (pList->Count == 0)
         {
-            THREAD_INFO &thread = pList->Threads[i];
-
-            std::cout << std::left
-                      << std::setw(8) << thread.ThreadId
-                      << std::setw(8) << thread.ProcessId
-                      << std::setw(16) << std::hex << thread.StartAddress << std::dec
-                      << std::setw(8) << thread.CreatorProcessId
-                      << std::setw(8) << (thread.IsRemoteThread ? "Yes" : "No")
-                      << WStringToString(FormatTime(thread.CreationTime)) << std::endl;
+            std::cout << "No thread history found." << std::endl;
         }
+        else
+        {
+            // Print header
+            std::cout << std::left << std::setw(8) << "TID"
+                    << std::setw(8) << "PID"
+                    << std::setw(18) << "Start Address"
+                    << std::setw(8) << "Creator"
+                    << std::setw(7) << "Remote"
+                    << std::setw(8) << "Risk"
+                    << "Creation Time / Flags" << std::endl;
+            std::cout << std::string(120, '-') << std::endl;
 
-        std::cout << std::endl
-                  << "Total threads: " << pList->Count
-                  << (ProcessId ? std::string(" for process ") + std::to_string(ProcessId) : "")
-                  << std::endl;
+            // Count risk levels
+            int highRiskCount = 0;
+            int mediumRiskCount = 0;
+            int lowRiskCount = 0;
+
+            // Print each thread
+            for (ULONG i = 0; i < pList->Count; i++)
+            {
+                THREAD_INFO &thread = pList->Threads[i];
+
+                // Get risk level string
+                std::string riskStr;
+                switch(thread.RiskLevel) {
+                    case 3: 
+                        riskStr = "HIGH";
+                        highRiskCount++;
+                        break;
+                    case 2: 
+                        riskStr = "MEDIUM";
+                        mediumRiskCount++;
+                        break;
+                    case 1: 
+                        riskStr = "LOW";
+                        lowRiskCount++;
+                        break;
+                    default: 
+                        riskStr = "NONE";
+                        break;
+                }
+
+                // Print base thread info
+                std::cout << std::left
+                        << std::setw(8) << thread.ThreadId
+                        << std::setw(8) << thread.ProcessId
+                        << std::setw(18) << "0x" << std::hex << thread.StartAddress << std::dec
+                        << std::setw(8) << thread.CreatorProcessId
+                        << std::setw(7) << (thread.IsRemoteThread ? "Yes" : "No")
+                        << std::setw(8) << riskStr
+                        << WStringToString(FormatTime(thread.CreationTime));
+
+                // Print flags if present
+                if (thread.Flags != 0) {
+                    std::cout << std::endl << std::string(57, ' ') << "Flags: ";
+                    
+                    if (thread.Flags & THREAD_FLAG_REMOTE_CREATED)
+                        std::cout << "[Remote] ";
+                    if (thread.Flags & THREAD_FLAG_SUSPICIOUS_ADDRESS)
+                        std::cout << "[Suspicious Address] ";
+                    if (thread.Flags & THREAD_FLAG_NOT_IN_IMAGE)
+                        std::cout << "[Not In Module] ";
+                    if (thread.Flags & THREAD_FLAG_SUSPICIOUS_TIMING)
+                        std::cout << "[Suspicious Timing] ";
+                    if (thread.Flags & THREAD_FLAG_SUSPENDED)
+                        std::cout << "[Suspended] ";
+                    if (thread.Flags & THREAD_FLAG_INJECTION_PATTERN)
+                        std::cout << "[INJECTION PATTERN] ";
+                }
+
+                std::cout << std::endl;
+                
+                // Add separator for high risk items
+                if (thread.RiskLevel == 3) {
+                    std::cout << std::string(120, '=') << std::endl;
+                }
+            }
+
+            std::cout << std::endl
+                    << "Total threads: " << pList->Count
+                    << (ProcessId ? std::string(" for process ") + std::to_string(ProcessId) : "")
+                    << std::endl;
+
+            // Print risk summary
+            if (highRiskCount > 0 || mediumRiskCount > 0) {
+                std::cout << std::endl << "Risk Summary:" << std::endl;
+                std::cout << "--------------" << std::endl;
+                
+                if (highRiskCount > 0) {
+                    std::cout << "HIGH RISK threads: " << highRiskCount << std::endl;
+                }
+                
+                if (mediumRiskCount > 0) {
+                    std::cout << "MEDIUM RISK threads: " << mediumRiskCount << std::endl;
+                }
+                
+                if (lowRiskCount > 0) {
+                    std::cout << "LOW RISK threads: " << lowRiskCount << std::endl;
+                }
+                
+                // Print security recommendations for high risk items
+                if (highRiskCount > 0) {
+                    std::cout << std::endl << "SECURITY RECOMMENDATIONS:" << std::endl;
+                    std::cout << "-------------------------" << std::endl;
+                    
+                    if (highRiskCount > 0) {
+                        std::cout << "* HIGH RISK threads with INJECTION PATTERN may indicate code injection attacks" << std::endl;
+                        std::cout << "* Threads with suspicious start addresses may be executing shellcode or injected code" << std::endl;
+                    }
+                    
+                    if (mediumRiskCount > 0) {
+                        std::cout << "* Review MEDIUM RISK threads for unusual behavior, particularly remote threads" << std::endl;
+                    }
+                    
+                    std::cout << "* Consider using process-info command for more detailed analysis of suspicious processes" << std::endl;
+                }
+            }
+        }
     }
     else
     {
@@ -877,7 +1122,7 @@ void ExportProcessListToCsv(const std::string &Filename)
         }
 
         // Write CSV header
-        csvFile << "PID,PPID,ImageName,UserName,CreationTime,IsTerminated" << std::endl;
+        csvFile << "PID,PPID,ImageName,CreationTime,IsTerminated" << std::endl;
 
         // Write process data
         PPROCESS_LIST pList = reinterpret_cast<PPROCESS_LIST>(buffer);
@@ -897,7 +1142,6 @@ void ExportProcessListToCsv(const std::string &Filename)
             csvFile << proc.ProcessId << ","
                     << proc.ParentProcessId << ","
                     << "\"" << WStringToString(fileName) << "\","
-                    << "\"" << WStringToString(proc.UserName) << "\","
                     << "\"" << WStringToString(timeStr) << "\","
                     << (proc.IsTerminated ? "Yes" : "No") << std::endl;
         }

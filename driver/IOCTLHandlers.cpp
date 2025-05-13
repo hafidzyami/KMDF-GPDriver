@@ -109,43 +109,38 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
 
     // Add detailed debug logging
     DbgPrint("[IOCTL] HandleGetProcessList called, outputBufferLength=%lu", outputBufferLength);
-    
+
     // Get the overall stats to compare
-    DbgPrint("[IOCTL] Stats: TotalProcessesMonitored=%lu, ActiveProcesses=%lu", 
-             TDriverClass::TotalProcessesMonitored, 
+    DbgPrint("[IOCTL] Stats: TotalProcessesMonitored=%lu, ActiveProcesses=%lu",
+             TDriverClass::TotalProcessesMonitored,
              TDriverClass::ActiveProcesses);
-    
+
     // Log ProcessHistorySize if available
-    if (TDriverClass::GetImageProcessFilter() != NULL) {
-        DbgPrint("[IOCTL] ImageProcessFilter->ProcessHistorySize=%llu", 
+    if (TDriverClass::GetImageProcessFilter() != NULL)
+    {
+        DbgPrint("[IOCTL] ImageProcessFilter->ProcessHistorySize=%llu",
                  TDriverClass::GetImageProcessFilter()->ProcessHistorySize);
     }
 
-    // Check if we have at least enough space for the count
-    if (outputBufferLength < sizeof(PROCESS_LIST))
-    {
-        PROCESS_LIST countOnly;
-        
-        // Check if ImageProcessFilter is initialized
-        if (TDriverClass::GetImageProcessFilter() == NULL) {
-            DbgPrint("[IOCTL] ImageProcessFilter is NULL, returning count=0");
-            countOnly.Count = 0;
-        } else {
-            countOnly.Count = (ULONG)TDriverClass::GetImageProcessFilter()->ProcessHistorySize;
-            DbgPrint("[IOCTL] Buffer too small, returning count=%lu", countOnly.Count);
-        }
+    // Calculate max processes correctly
+    ULONG maxProcesses = 0;
 
-        // Return just the count so the client knows how much space is needed
-        RtlCopyMemory(outputBuffer, &countOnly, sizeof(PROCESS_LIST));
-        bytesReturned = sizeof(PROCESS_LIST);
-        status = STATUS_BUFFER_TOO_SMALL;
-        goto Exit;
+    // Calculate how many total processes will fit in the output buffer
+    if (outputBufferLength >= sizeof(PROCESS_LIST))
+    {
+        // Calculate how many total processes will fit
+        SIZE_T availableSpace = outputBufferLength - sizeof(ULONG);
+        maxProcesses = (ULONG)(availableSpace / sizeof(PROCESS_INFO));
+
+        // Always make sure we can at least return one process
+        maxProcesses = max(1, maxProcesses);
+
+        DbgPrint("[IOCTL] Output buffer can hold up to %lu processes (sizeof(PROCESS_INFO)=%lu bytes)",
+                 maxProcesses, (ULONG)sizeof(PROCESS_INFO));
     }
 
-    // The output buffer is large enough for at least the header, now see if we can fit all processes
+    // Initialize the count to 0, will be updated as we fill the list
     PPROCESS_LIST pList = (PPROCESS_LIST)outputBuffer;
-
-    // Check if pList is NULL
     if (pList == NULL)
     {
         DbgPrint("[IOCTL] Output buffer is NULL");
@@ -153,26 +148,6 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
         goto Exit;
     }
 
-    // FIXED: Calculate max processes correctly
-    // Note: PROCESS_LIST already includes one PROCESS_INFO in its definition
-    // so we don't need to subtract a full PROCESS_INFO, just adjust for the Count field
-    ULONG maxProcesses = 0;
-    if (outputBufferLength >= sizeof(PROCESS_LIST))
-    {
-        // Calculate how many additional PROCESS_INFO structures can fit after the first one
-        SIZE_T remainingSpace = outputBufferLength - FIELD_OFFSET(PROCESS_LIST, Processes);
-        
-        // The first PROCESS_INFO is already included in PROCESS_LIST, so divide the remaining space
-        maxProcesses = (ULONG)(remainingSpace / sizeof(PROCESS_INFO));
-        
-        // One PROCESS_INFO is already included in the PROCESS_LIST structure
-        DbgPrint("[IOCTL] Output buffer breakdown: total=%lu, PROCESS_LIST header=%lu, remaining=%lu",
-                outputBufferLength, FIELD_OFFSET(PROCESS_LIST, Processes), remainingSpace);
-    }
-    
-    DbgPrint("[IOCTL] Output buffer can hold up to %lu processes", maxProcesses);
-
-    // Initialize the count to 0, will be updated as we fill the list
     pList->Count = 0;
 
     // Check if ImageProcessFilter is initialized
@@ -184,9 +159,6 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
         status = STATUS_SUCCESS; // Return empty list instead of failing
         goto Exit;
     }
-
-    // Only proceed if we have actual process data from ImageProcessFilter
-    ULONG actualCount = 0;
 
     // Only proceed if we have actual process data and maxProcesses > 0
     if (maxProcesses > 0)
@@ -203,56 +175,35 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
         }
 
         RtlZeroMemory(processSummaries, maxProcesses * sizeof(PROCESS_SUMMARY_ENTRY));
-        
+
         DbgPrint("[IOCTL] Calling GetProcessHistorySummary with maxProcesses=%lu", maxProcesses);
 
         // Get the process summaries with proper error handling
+        ULONG actualCount = 0;
         __try
         {
-            // Log before calling
             PIMAGE_PROCESS_FILTER filter = TDriverClass::GetImageProcessFilter();
-            DbgPrint("[IOCTL] About to call GetProcessHistorySummary, ProcessHistorySize=%llu", 
-                    filter->ProcessHistorySize);
-            
-            // Check if the first few entries have valid data
-            if (filter->ProcessHistorySize > 0) {
-                DbgPrint("[IOCTL] Checking first few process entries:");
-                for (ULONG i = 0; i < min(5, filter->ProcessHistorySize); i++) {
-                    PPROCESS_HISTORY_ENTRY entry = &filter->ProcessHistory[i];
-                    DbgPrint("[IOCTL] Process[%lu]: PID=%p, Terminated=%d", 
-                            i, entry->ProcessId, entry->ProcessTerminated);
-                }
-            }
-            
-            actualCount = TDriverClass::GetImageProcessFilter()->GetProcessHistorySummary(
+            actualCount = filter->GetProcessHistorySummary(
                 0,                // Skip count - start from the beginning
                 processSummaries, // Buffer for summaries
                 maxProcesses      // Maximum processes to return
             );
-            
+
             DbgPrint("[IOCTL] GetProcessHistorySummary returned %lu entries", actualCount);
-            
-            // Debug the first few entries returned
-            if (actualCount > 0) {
-                DbgPrint("[IOCTL] First few summary entries returned:");
-                for (ULONG i = 0; i < min(5, actualCount); i++) {
-                    DbgPrint("[IOCTL] Summary[%lu]: PID=%p, Terminated=%d, Image=%ws", 
-                            i, processSummaries[i].ProcessId, processSummaries[i].ProcessTerminated,
-                            processSummaries[i].ImageFileName);
-                }
-            } else {
-                DbgPrint("[IOCTL] No summary entries were returned!");
-            }
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-            DbgPrint("[IOCTL] Exception occurred while getting process history summaries: 0x%X", 
-                    GetExceptionCode());
+            DbgPrint("[IOCTL] Exception occurred while getting process history summaries: 0x%X",
+                     GetExceptionCode());
             actualCount = 0; // Reset count on exception
         }
 
         // Convert PROCESS_SUMMARY_ENTRY to PROCESS_INFO
         DbgPrint("[IOCTL] Converting %lu summaries to PROCESS_INFO format", actualCount);
+
+        // Get the process filter for direct access to process history
+        PIMAGE_PROCESS_FILTER filter = TDriverClass::GetImageProcessFilter();
+
         for (ULONG i = 0; i < actualCount && i < maxProcesses; i++)
         {
             // Copy basic process information
@@ -261,30 +212,67 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
 
             // Copy image name with proper bounds checking
             RtlZeroMemory(pList->Processes[i].ImagePath, sizeof(pList->Processes[i].ImagePath));
-            
-            // Debug
-            DbgPrint("[IOCTL] Process %lu: PID=%lu, Terminated=%d", 
-                    i, pList->Processes[i].ProcessId, pList->Processes[i].IsTerminated);
-                    
-            if (processSummaries[i].ImageFileName[0] != L'\0') {
-                RtlCopyMemory(pList->Processes[i].ImagePath,
-                          processSummaries[i].ImageFileName,
-                          min(sizeof(pList->Processes[i].ImagePath) - sizeof(WCHAR),
-                              wcslen(processSummaries[i].ImageFileName) * sizeof(WCHAR)));
-                              
-                // Debug image path              
-                DbgPrint("[IOCTL] Process %lu Image: %ws", i, pList->Processes[i].ImagePath);
-            } else {
-                DbgPrint("[IOCTL] Process %lu has empty image name", i);
-            }
-        }
-    }
-    // If no actual process data, we just return count = 0
 
-    pList->Count = actualCount;
-    bytesReturned = sizeof(PROCESS_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(PROCESS_INFO) : 0);
-    
-    DbgPrint("[IOCTL] Final result: returned %lu processes, bytesReturned=%lu", actualCount, bytesReturned);
+            if (processSummaries[i].ImageFileName[0] != L'\0')
+            {
+                RtlCopyMemory(pList->Processes[i].ImagePath,
+                              processSummaries[i].ImageFileName,
+                              min(sizeof(pList->Processes[i].ImagePath) - sizeof(WCHAR),
+                                  wcslen(processSummaries[i].ImageFileName) * sizeof(WCHAR)));
+            }
+
+            // Find the original process entry to get ParentProcessId
+            PPROCESS_HISTORY_ENTRY originalEntry = NULL;
+            for (ULONG64 j = 0; j < filter->ProcessHistorySize; j++)
+            {
+                if (filter->ProcessHistory[j].ProcessId == processSummaries[i].ProcessId)
+                {
+                    originalEntry = &filter->ProcessHistory[j];
+                    break;
+                }
+            }
+
+            // Set ParentProcessId and CreationTime if we found the original entry
+            if (originalEntry != NULL)
+            {
+                // Set ParentProcessId
+                pList->Processes[i].ParentProcessId = HandleToUlong(originalEntry->ParentId);
+
+                // Set CreationTime
+                ULONGLONG epochSeconds = originalEntry->EpochExecutionTime;
+                LARGE_INTEGER systemTime;
+
+                // Convert EPOCH time to Windows FILETIME format
+                // FILETIME starts from 1601-01-01, EPOCH from 1970-01-01
+                // The difference is 11644473600 seconds
+                systemTime.QuadPart = (epochSeconds + 11644473600ULL) * 10000000ULL;
+                pList->Processes[i].CreationTime = systemTime;
+
+                DbgPrint("[IOCTL] Process %lu: PID=%lu, PPID=%lu, Epoch=%llu",
+                         i, pList->Processes[i].ProcessId,
+                         pList->Processes[i].ParentProcessId,
+                         originalEntry->EpochExecutionTime);
+            }
+            else
+            {
+                // Default values if not found
+                pList->Processes[i].ParentProcessId = 0;
+                pList->Processes[i].CreationTime.QuadPart = 0;
+
+                DbgPrint("[IOCTL] Process %lu: PID=%lu, couldn't find original entry",
+                         i, pList->Processes[i].ProcessId);
+            }
+
+            // Clear UserName field since we're not using it
+            /* RtlZeroMemory(pList->Processes[i].UserName, sizeof(pList->Processes[i].UserName));*/
+        }
+
+        pList->Count = actualCount;
+        bytesReturned = sizeof(PROCESS_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(PROCESS_INFO) : 0);
+    }
+
+    DbgPrint("[IOCTL] Final result: returned %lu processes, bytesReturned=%lu",
+             pList->Count, bytesReturned);
 
 Exit:
     // Clean up allocated memory if needed
@@ -326,6 +314,7 @@ HandleGetProcessDetails(
     // Get the process ID from the input
     PPROCESS_DETAILS_REQUEST pRequest = (PPROCESS_DETAILS_REQUEST)inputBuffer;
     ULONG processId = pRequest->ProcessId;
+    DbgPrint("[IOCTL] GetProcessDetails for PID %lu", processId);
 
     // First check if the output buffer is large enough for basic process info
     if (outputBufferLength < sizeof(PROCESS_INFO))
@@ -335,27 +324,37 @@ HandleGetProcessDetails(
         goto Exit;
     }
 
+    // Get the ImageProcessFilter pointer
+    PIMAGE_PROCESS_FILTER filter = TDriverClass::GetImageProcessFilter();
+    if (filter == NULL)
+    {
+        DbgPrint("[IOCTL] ImageProcessFilter is not initialized");
+        status = STATUS_UNSUCCESSFUL;
+        goto Exit;
+    }
+
     // Get process details from the image filter
-    // This is a simplified implementation - in a real handler, you would extract process details
-    // from your internal process tracking structures
     PROCESS_INFO processInfo;
     RtlZeroMemory(&processInfo, sizeof(PROCESS_INFO));
-
-    // Set basic information
-    processInfo.ProcessId = processId;
-
-    // Populate with real data - this would be implemented based on your data structures
-    // For example, use GetProcessImageFileName and other functions to get details
-
-    // For this demonstration, we'll just fill with some sample data
-    processInfo.ParentProcessId = 0;  // Would be filled from actual data
-    processInfo.IsTerminated = FALSE; // Would be filled from actual data
+    
+    // Call the new method that handles all the locking properly
+    BOOLEAN found = filter->GetProcessDetails(ULongToHandle(processId), &processInfo);
+    
+    if (found)
+    {
+        DbgPrint("[IOCTL] Successfully found process %lu details", processId);
+    }
+    else
+    {
+        DbgPrint("[IOCTL] Process %lu not found in history", processId);
+        // Initialize process info with basic information
+        processInfo.ProcessId = processId;
+        processInfo.IsTerminated = TRUE; // Assume terminated if not found
+    }
 
     // Copy to output buffer
     RtlCopyMemory(outputBuffer, &processInfo, sizeof(PROCESS_INFO));
     bytesReturned = sizeof(PROCESS_INFO);
-
-    DbgPrint("[IOCTL] Successfully returned details for process %lu", processId);
 
 Exit:
     // Set the bytes returned
@@ -573,7 +572,7 @@ HandleGetImageLoadHistory(
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-            DbgPrint("[IOCTL] Exception when accessing input buffer, code: 0x%08X\n", GetExceptionCode());
+            DbgPrint("[IOCTL] Exception when accessing input buffer, code: 0x%08X", GetExceptionCode());
             status = STATUS_INVALID_PARAMETER;
             goto Exit;
         }
@@ -597,121 +596,23 @@ HandleGetImageLoadHistory(
     // Calculate how many images we can fit in the buffer
     ULONG maxImages = (outputBufferLength - sizeof(IMAGE_LOAD_LIST)) / sizeof(IMAGE_LOAD_INFO) + 1;
 
-    // Try to get actual image load history
-    ULONG actualCount = 0;
-
-    // Check if we have ImageProcessFilter
-    if (TDriverClass::GetImageProcessFilter())
+    // Get the ImageProcessFilter
+    PIMAGE_FILTER filter = TDriverClass::GetImageProcessFilter();
+    if (filter == NULL)
     {
-        PIMAGE_PROCESS_FILTER imageFilter = TDriverClass::GetImageProcessFilter();
-
-        // Get all process history entries
-        if (imageFilter->ProcessHistorySize > 0)
-        {
-            ULONG processIndex = 0;
-            ULONG imagesCollected = 0;
-
-            // Lock the process history array for thread safety
-            ExAcquireFastMutex(IOCTLConvertToFastMutex((ULONG_PTR)&imageFilter->ProcessHistoryLock));
-
-            // Iterate through all process histories
-            while (processIndex < imageFilter->ProcessHistorySize && imagesCollected < maxImages)
-            {
-                PPROCESS_HISTORY_ENTRY processEntryBase = &imageFilter->ProcessHistory[processIndex];
-                // Convert to complete entry for simplified access
-                KMDF_ProcessHistoryEntryComplete *processEntry = AsCompleteEntry(processEntryBase);
-                processIndex++;
-
-                // Skip if not the requested process and a specific PID was requested
-                if (requestedProcessId != 0 &&
-                    processEntry->ProcessId != ULongToHandle(requestedProcessId))
-                {
-                    continue;
-                }
-
-                // Check if the process has image load entries
-                if (processEntry->ImageLoadHistorySize > 0 && processEntry->ImageLoadHistory != NULL)
-                {
-                    // Lock the image history for this process
-                    PFAST_MUTEX imageLock = IOCTLConvertToFastMutex((ULONG_PTR)&processEntry->ImageLoadHistoryLock);
-                    ExAcquireFastMutex(imageLock);
-
-                    // Image load history is stored as a linked list in our implementation
-                    PKMDF_IMAGE_LOAD_HISTORY_ENTRY currentEntry = processEntry->ImageLoadHistory;
-                    for (ULONG i = 0; i < processEntry->ImageLoadHistorySize && imagesCollected < maxImages && currentEntry != NULL; i++)
-                    {
-                        // Create temporary instance for simplified field access
-                        IMAGE_LOAD_ENTRY imgEntry;
-                        imgEntry.ImageFileName = currentEntry->ImageFileName.Buffer;
-                        imgEntry.CallerProcessId = currentEntry->CallerProcessId;
-                        imgEntry.RemoteLoad = currentEntry->RemoteImage;
-
-                        // Create time from system time
-                        LARGE_INTEGER loadTime;
-                        KeQuerySystemTime(&loadTime);
-
-                        // Estimate base and size from other data
-                        ULONG_PTR imageBase = (ULONG_PTR)0x10000000 + (i * 0x10000); // Example address
-                        SIZE_T imageSize = 0x50000;                                  // Example size (320K)
-
-                        // Populate from our temporary instance
-                        PIMAGE_LOAD_INFO imgInfo = &pList->LoadedImages[imagesCollected];
-                        imgInfo->ProcessId = HandleToUlong(processEntry->ProcessId);
-                        imgInfo->ImageBase = imageBase;
-                        imgInfo->ImageSize = imageSize;
-                        imgInfo->RemoteLoad = imgEntry.RemoteLoad;
-                        imgInfo->CallerProcessId = HandleToUlong(imgEntry.CallerProcessId);
-                        imgInfo->LoadTime = loadTime;
-
-                        // Copy image path with appropriate bounds checking
-                        if (imgEntry.ImageFileName != NULL)
-                        {
-                            SIZE_T pathLen = wcslen(imgEntry.ImageFileName) * sizeof(WCHAR);
-                            SIZE_T maxPathSize = sizeof(imgInfo->ImagePath) - sizeof(WCHAR);
-
-                            RtlCopyMemory(
-                                imgInfo->ImagePath,
-                                imgEntry.ImageFileName,
-                                min(pathLen, maxPathSize));
-
-                            // Ensure null termination
-                            imgInfo->ImagePath[maxPathSize / sizeof(WCHAR)] = L'\0';
-                        }
-                        else
-                        {
-                            // If no filename, set to Unknown
-                            RtlCopyMemory(
-                                imgInfo->ImagePath,
-                                L"[Unknown]",
-                                sizeof(L"[Unknown]"));
-                        }
-
-                        imagesCollected++;
-
-                        // Move to next entry in the linked list
-                        currentEntry = (PKMDF_IMAGE_LOAD_HISTORY_ENTRY)currentEntry->ListEntry.Flink;
-                        if (currentEntry == processEntry->ImageLoadHistory || currentEntry == NULL)
-                        {
-                            break; // End of list or circular reference
-                        }
-                    }
-
-                    // Release the image history lock
-                    PFAST_MUTEX imageReleaseLock = IOCTLConvertToFastMutex((ULONG_PTR)&processEntry->ImageLoadHistoryLock);
-                    ExReleaseFastMutex(imageReleaseLock);
-                }
-            }
-
-            // Release the process history lock
-            ExReleaseFastMutex(IOCTLConvertToFastMutex((ULONG_PTR)&imageFilter->ProcessHistoryLock));
-
-            actualCount = imagesCollected;
-            DbgPrint("[IOCTL] Collected %lu actual image load entries", actualCount);
-        }
+        DbgPrint("[IOCTL] ImageProcessFilter is NULL");
+        status = STATUS_UNSUCCESSFUL;
+        goto Exit;
     }
 
+    // Get image load history using the safe method
+    ULONG actualCount = filter->GetImageLoadHistory(
+        ULongToHandle(requestedProcessId),
+        pList->LoadedImages,
+        maxImages);
+
     pList->Count = actualCount;
-    bytesReturned = sizeof(IMAGE_LOAD_LIST) + (actualCount - 1) * sizeof(IMAGE_LOAD_INFO);
+    bytesReturned = sizeof(IMAGE_LOAD_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(IMAGE_LOAD_INFO) : 0);
 
     DbgPrint("[IOCTL] Successfully returned %lu image load entries", actualCount);
 
@@ -740,7 +641,7 @@ HandleGetThreadCreationHistory(
     // Check input parameters
     if (inputBufferLength < sizeof(ULONG))
     {
-        DbgPrint("[IOCTL] Invalid input buffer size for thread creation history request\n");
+        DbgPrint("[IOCTL] Invalid input buffer size for thread creation history request");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -755,7 +656,7 @@ HandleGetThreadCreationHistory(
     // First check if the output buffer is large enough for the header
     if (outputBufferLength < sizeof(THREAD_LIST))
     {
-        DbgPrint("[IOCTL] Buffer too small for thread list\n");
+        DbgPrint("[IOCTL] Buffer too small for thread list");
         status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
@@ -770,102 +671,25 @@ HandleGetThreadCreationHistory(
     // Calculate how many threads we can fit in the buffer
     ULONG maxThreads = (outputBufferLength - sizeof(THREAD_LIST)) / sizeof(THREAD_INFO) + 1;
 
-    // Try to get actual thread creation history
-    ULONG actualCount = 0;
-
-    // Check if we have process history in ImageProcessFilter
-    if (TDriverClass::GetImageProcessFilter())
+    // Get the ImageProcessFilter
+    PIMAGE_FILTER filter = TDriverClass::GetImageProcessFilter();
+    if (filter == NULL)
     {
-        PIMAGE_PROCESS_FILTER imageFilter = TDriverClass::GetImageProcessFilter();
-
-        if (imageFilter == NULL)
-        {
-            DbgPrint("[IOCTL] ImageProcessFilter is NULL");
-            status = STATUS_INVALID_PARAMETER;
-            goto Exit;
-        }
-
-        // Validasi ProcessHistoryLock
-        PFAST_MUTEX processMutex = IOCTLConvertToFastMutex((ULONG_PTR)&imageFilter->ProcessHistoryLock);
-        if (processMutex == NULL)
-        {
-            DbgPrint("[IOCTL] ProcessHistoryLock is invalid");
-            status = STATUS_INVALID_PARAMETER;
-            goto Exit;
-        }
-
-        // Get all process history entries
-        if (imageFilter->ProcessHistorySize > 0)
-        {
-            ULONG processIndex = 0;
-            ULONG threadsCollected = 0;
-
-            __try
-            {
-                ExAcquireFastMutex(processMutex);
-                // Iterate through all process histories
-                while (processIndex < imageFilter->ProcessHistorySize && threadsCollected < maxThreads)
-                {
-                    PPROCESS_HISTORY_ENTRY processEntryBase = &imageFilter->ProcessHistory[processIndex];
-                    // Convert to complete entry to access thread fields
-                    KMDF_ProcessHistoryEntryComplete *processEntry = AsCompleteEntry(processEntryBase);
-                    processIndex++;
-
-                    // Skip if not the requested process and a specific PID was requested
-                    if (requestedProcessId != 0 &&
-                        processEntry->ProcessId != ULongToHandle(requestedProcessId))
-                    {
-                        continue;
-                    }
-
-                    // Check if the process has thread creation entries
-                    // This function only accesses thread entries if they are available
-                    if (processEntry->ThreadHistorySize > 0 && processEntry->ThreadHistory != NULL)
-                    {
-                        // Lock the thread history for this process
-                        PFAST_MUTEX threadLock = IOCTLConvertToFastMutex((ULONG_PTR)&processEntry->ThreadHistoryLock);
-                        ExAcquireFastMutex(threadLock);
-
-                        // Iterate through thread creations for this process
-                        for (ULONG i = 0; i < processEntry->ThreadHistorySize && threadsCollected < maxThreads; i++)
-                        {
-                            PTHREAD_CREATE_ENTRY threadEntry = &processEntry->ThreadHistory[i];
-                            PTHREAD_INFO threadInfo = &pList->Threads[threadsCollected];
-
-                            // Copy the data to the output buffer
-                            threadInfo->ThreadId = HandleToUlong(threadEntry->ThreadId);
-                            threadInfo->ProcessId = HandleToUlong(processEntry->ProcessId);
-                            threadInfo->CreatorProcessId = HandleToUlong(threadEntry->CreatorProcessId);
-                            threadInfo->StartAddress = (ULONG_PTR)threadEntry->StartAddress;
-                            threadInfo->IsRemoteThread = threadEntry->IsRemoteThread;
-                            threadInfo->CreationTime = threadEntry->CreationTime;
-
-                            threadsCollected++;
-                        }
-
-                        // Release the thread history lock
-                        PFAST_MUTEX threadReleaseLock = IOCTLConvertToFastMutex((ULONG_PTR)&processEntry->ThreadHistoryLock);
-                        ExReleaseFastMutex(threadReleaseLock);
-                    }
-                }
-
-                ExReleaseFastMutex(processMutex);
-                actualCount = threadsCollected;
-                DbgPrint("[IOCTL] Collected %lu actual thread creation entries", actualCount);
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER)
-            {
-                DbgPrint("[IOCTL] Exception while acquiring process mutex: 0x%X", GetExceptionCode());
-                status = STATUS_INVALID_PARAMETER;
-                goto Exit;
-            }
-        }
+        DbgPrint("[IOCTL] ImageProcessFilter is NULL");
+        status = STATUS_UNSUCCESSFUL;
+        goto Exit;
     }
 
-    pList->Count = actualCount;
-    bytesReturned = sizeof(THREAD_LIST) + (actualCount - 1) * sizeof(THREAD_INFO);
+    // Get thread creation history using the safe method
+    ULONG actualCount = filter->GetThreadCreationHistory(
+        ULongToHandle(requestedProcessId),
+        pList->Threads,
+        maxThreads);
 
-    DbgPrint("[IOCTL] Successfully returned %lu thread creation entries\n", actualCount);
+    pList->Count = actualCount;
+    bytesReturned = sizeof(THREAD_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(THREAD_INFO) : 0);
+
+    DbgPrint("[IOCTL] Successfully returned %lu thread creation entries", actualCount);
 
 Exit:
     // Set the bytes returned

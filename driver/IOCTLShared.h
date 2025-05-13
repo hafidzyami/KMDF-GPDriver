@@ -1,4 +1,5 @@
 #pragma once
+#include "shared.h"
 
 //
 // Shared IOCTL codes and structures between driver and client application
@@ -45,7 +46,18 @@ typedef struct _PROCESS_INFO {
     WCHAR CommandLine[MAX_PATH_LENGTH];
     LARGE_INTEGER CreationTime;
     BOOLEAN IsTerminated;
-    WCHAR UserName[64];
+
+    // Malware detection enhancements
+    ULONG LoadedModuleCount;        // Total modules/DLLs loaded
+    ULONG ThreadCount;              // Total threads
+    BOOLEAN HasRemoteLoadedModules; // Any modules loaded by another process
+    ULONG RemoteLoadCount;          // Number of remotely loaded modules
+    WCHAR FirstRemoteModule[MAX_PATH_LENGTH]; // First remotely loaded module
+    BOOLEAN HasRemoteCreatedThreads; // Any threads created by another process
+    ULONG RemoteThreadCount;        // Number of remotely created threads
+    ULONG FirstRemoteThreadCreator; // PID of first remote thread creator
+    ULONG_PTR FirstRemoteThreadAddress; // Start address of first remote thread
+    ULONG AnomalyScore;            // 0-100 score of how suspicious this process is
 } PROCESS_INFO, *PPROCESS_INFO;
 
 typedef struct _PROCESS_LIST {
@@ -78,7 +90,16 @@ typedef struct _REGISTRY_ACTIVITY_LIST {
     REGISTRY_ACTIVITY Activities[1]; // Variable length array
 } REGISTRY_ACTIVITY_LIST, *PREGISTRY_ACTIVITY_LIST;
 
-// Image load entry
+// Flags for IMAGE_LOAD_INFO
+#define IMAGE_FLAG_REMOTE_LOADED        0x0001
+#define IMAGE_FLAG_NON_SYSTEM           0x0002
+#define IMAGE_FLAG_SUSPICIOUS_LOCATION  0x0004
+#define IMAGE_FLAG_POTENTIAL_HIJACK     0x0008
+#define IMAGE_FLAG_NETWORK_RELATED      0x0010
+#define IMAGE_FLAG_HOOK_RELATED         0x0020
+#define IMAGE_FLAG_UNSIGNED             0x0040
+
+// Enhanced IMAGE_LOAD_INFO structure
 typedef struct _IMAGE_LOAD_INFO {
     ULONG ProcessId;
     WCHAR ImagePath[MAX_PATH_LENGTH];
@@ -87,6 +108,8 @@ typedef struct _IMAGE_LOAD_INFO {
     BOOLEAN RemoteLoad;
     ULONG CallerProcessId;
     LARGE_INTEGER LoadTime;
+    ULONG Flags;  // Added flags field
+    ULONG RiskLevel; // 0=None, 1=Low, 2=Medium, 3=High
 } IMAGE_LOAD_INFO, *PIMAGE_LOAD_INFO;
 
 typedef struct _IMAGE_LOAD_LIST {
@@ -94,7 +117,14 @@ typedef struct _IMAGE_LOAD_LIST {
     IMAGE_LOAD_INFO LoadedImages[1]; // Variable length array
 } IMAGE_LOAD_LIST, *PIMAGE_LOAD_LIST;
 
-// Thread creation info
+#define THREAD_FLAG_REMOTE_CREATED       0x0001
+#define THREAD_FLAG_SUSPICIOUS_ADDRESS   0x0002
+#define THREAD_FLAG_NOT_IN_IMAGE         0x0004
+#define THREAD_FLAG_SUSPICIOUS_TIMING    0x0008
+#define THREAD_FLAG_SUSPENDED            0x0010
+#define THREAD_FLAG_INJECTION_PATTERN    0x0020
+
+// Enhanced THREAD_INFO structure
 typedef struct _THREAD_INFO {
     ULONG ThreadId;
     ULONG ProcessId;
@@ -102,23 +132,14 @@ typedef struct _THREAD_INFO {
     ULONG_PTR StartAddress;
     BOOLEAN IsRemoteThread;
     LARGE_INTEGER CreationTime;
+    ULONG Flags;  // Added flags field
+    ULONG RiskLevel; // 0=None, 1=Low, 2=Medium, 3=High
 } THREAD_INFO, *PTHREAD_INFO;
 
 typedef struct _THREAD_LIST {
     ULONG Count;
     THREAD_INFO Threads[1]; // Variable length array
 } THREAD_LIST, *PTHREAD_LIST;
-
-// Use the ALERT_TYPE definition from shared.h instead of redefining it here
-#ifndef ALERT_TYPE_DEFINED
-#define ALERT_TYPE_DEFINED
-typedef enum _ALERT_TYPE {
-    AlertTypeStackViolation = 0,
-    AlertTypeFilterViolation,
-    AlertTypeRemoteThreadCreation,
-    AlertTypeParentProcessIdSpoofing
-} ALERT_TYPE;
-#endif
 
 // Alert info structure
 typedef struct _ALERT_INFO {

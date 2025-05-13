@@ -48,13 +48,13 @@ typedef struct ProcessHistoryEntry
 	PIMAGE_LOAD_HISTORY_ENTRY ImageLoadHistory; // A linked-list of loaded images and their respective stack histories.
 	// We now use the global process lock instead of individual locks
 	// EX_PUSH_LOCK ImageLoadHistoryLock; // The lock protecting the linked-list of loaded images.
-	ULONG ImageLoadHistorySize;					// The size of the image load history linked-list.
+	ULONG ImageLoadHistorySize; // The size of the image load history linked-list.
 
 	// Additional fields needed for IOCTLHandlers.cpp
-	struct _THREAD_CREATE_ENTRY* ThreadHistory;   // Thread creation history for this process
+	struct _THREAD_CREATE_ENTRY *ThreadHistory; // Thread creation history for this process
 	// We use the global process lock instead of individual locks
 	// EX_PUSH_LOCK ThreadHistoryLock;              // Lock protecting the thread history
-	ULONG ThreadHistorySize;                     // Number of entries in the thread history
+	ULONG ThreadHistorySize; // Number of entries in the thread history
 } PROCESS_HISTORY_ENTRY, *PPROCESS_HISTORY_ENTRY;
 
 typedef class ImageFilter
@@ -71,7 +71,7 @@ public:
 		_In_ HANDLE ProcessId,
 		_In_ PIMAGE_INFO ImageInfo);
 
-	static StackWalker walker;						  // Stack walking utility.
+	static StackWalker walker; // Stack walking utility.
 	static PDETECTION_LOGIC detector;
 
 	static VOID AddProcessToHistory(
@@ -90,12 +90,21 @@ public:
 		_In_ HANDLE ThreadId,
 		_In_ BOOLEAN Create);
 
+	BOOLEAN GetProcessDetails(
+		_In_ HANDLE ProcessId,
+		_Out_ PPROCESS_INFO ProcessDetails);
+
+	ULONG GetThreadCreationHistory(
+    _In_ HANDLE ProcessId,
+    _Out_ PTHREAD_INFO ThreadInfoArray,
+    _In_ ULONG MaxEntries);
+
 public:
-	static PROCESS_HISTORY_ENTRY* ProcessHistory;     // Array of process history objects
-	static KSPIN_LOCK ProcessHistoryLock;              // Lock protecting the ProcessHistory array
-	static KIRQL ProcessHistoryOldIrql;               // Old IRQL for spin lock
-	static BOOLEAN destroying;                         // This boolean indicates to functions that a lock should not be held as we are in the process of destruction.
-	static ULONG64 ProcessHistorySize;                // Number of entries in the ProcessHistory array
+	static PROCESS_HISTORY_ENTRY *ProcessHistory; // Array of process history objects
+	static KSPIN_LOCK ProcessHistoryLock;		  // Lock protecting the ProcessHistory array
+	static KIRQL ProcessHistoryOldIrql;			  // Old IRQL for spin lock
+	static BOOLEAN destroying;					  // This boolean indicates to functions that a lock should not be held as we are in the process of destruction.
+	static ULONG64 ProcessHistorySize;			  // Number of entries in the ProcessHistory array
 
 	// Constructor & Destructor
 	ImageFilter(

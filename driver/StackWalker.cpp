@@ -250,7 +250,7 @@ StackWalker::WalkAndResolveStack (
         capturedReturnPtrs = RtlWalkFrameChain(stackReturnPtrs, *ResolvedStackSize, 1);
         if (capturedReturnPtrs == 0)
         {
-            DBGPRINT("StackWalker!WalkAndResolveStack: Failed to walk the stack.");
+            // DBGPRINT("StackWalker!WalkAndResolveStack: Failed to walk the stack.");
             goto Exit;
         }
     }
