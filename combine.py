@@ -1,26 +1,60 @@
+import os
 import pandas as pd
 import glob
 
-# Step 1: Ambil semua file
-benign_files = glob.glob(r"C:\Users\hafid\OneDrive\Desktop\KMDF-GPDriver\dataset\benign\*.csv")
-malware_files = glob.glob(r"C:\Users\hafid\OneDrive\Desktop\KMDF-GPDriver\dataset\malware\*.csv")
-all_files = benign_files + malware_files
+def main():
+    # Path ke direktori dataset
+    benign_dir = r"C:\Users\hafid\OneDrive\Desktop\KMDF-GPDriver\dataset\benign"
+    malware_dir = r"C:\Users\hafid\OneDrive\Desktop\KMDF-GPDriver\dataset\malware"
+    output_file = r"C:\Users\hafid\OneDrive\Desktop\KMDF-GPDriver\datasetcombine.csv"
+    
+    # Mendapatkan semua file CSV di kedua direktori
+    benign_files = glob.glob(os.path.join(benign_dir, "*.csv"))
+    malware_files = glob.glob(os.path.join(malware_dir, "*.csv"))
+    
+    print(f"Ditemukan {len(benign_files)} file CSV benign")
+    print(f"Ditemukan {len(malware_files)} file CSV malware")
+    
+    # Daftar untuk menyimpan semua dataframe
+    all_dfs = []
+    
+    # Membaca dan memproses file benign
+    for file in benign_files:
+        try:
+            df = pd.read_csv(file)
+            # Tambahkan kolom IS_MALWARE dengan nilai 0
+            df['IS_MALWARE'] = 0
+            all_dfs.append(df)
+            print(f"Berhasil menambahkan file benign: {os.path.basename(file)}")
+        except Exception as e:
+            print(f"Error pada file {file}: {str(e)}")
+    
+    # Membaca dan memproses file malware
+    for file in malware_files:
+        try:
+            df = pd.read_csv(file)
+            # Tambahkan kolom IS_MALWARE berdasarkan kondisi
+            df['IS_MALWARE'] = df['ProcessName'].apply(
+                lambda x: 1 if isinstance(x, str) and x.startswith('\\Device\\HarddiskVolume5\\new\\ransomware_high_confidence') else 0
+            )
+            all_dfs.append(df)
+            print(f"Berhasil menambahkan file malware: {os.path.basename(file)}")
+        except Exception as e:
+            print(f"Error pada file {file}: {str(e)}")
+    
+    if not all_dfs:
+        print("Tidak ada data yang dapat digabungkan.")
+        return
+    
+    # Gabungkan semua dataframe
+    combined_df = pd.concat(all_dfs, ignore_index=True)
+    
+    # Simpan ke file CSV
+    combined_df.to_csv(output_file, index=False)
+    
+    print(f"\nBerhasil menggabungkan {len(all_dfs)} file CSV")
+    print(f"Total {len(combined_df)} baris data")
+    print(f"File hasil disimpan di: {output_file}")
 
-# Step 2: Gabungkan
-dfs = [pd.read_csv(f) for f in all_files]
-combined_df = pd.concat(dfs, ignore_index=True)
-
-# Step 3: Definisikan prefix
-prefix = r"\\device\\harddiskvolume5\\new\\ransomware_high_confidence\\avoslocker\\"
-
-# Step 4: Normalisasi dan cek startswith (dengan 1 backslash)
-combined_df['IS_MALWARE'] = combined_df['ProcessName'].astype(str).str.lower().str.strip().str.startswith(prefix).astype(int)
-
-# Step 5: Simpan hasil
-output_path = r"C:\Users\hafid\OneDrive\Desktop\KMDF-GPDriver\dataset_hafidz.csv"
-combined_df.to_csv(output_path, index=False)
-
-# Step 6: Debug output
-print("✅ Jumlah baris dengan IS_MALWARE = 1:", combined_df['IS_MALWARE'].sum())
-print("Contoh yang terdeteksi:")
-print(combined_df[combined_df['IS_MALWARE'] == 1][['ProcessName']].head())
+if __name__ == "__main__":
+    main()
