@@ -229,7 +229,7 @@ ThreadCreateNotifyWorkItemRoutine(
         if (targetProcessHistory->ThreadHistory == NULL)
         {
             // Define initial capacity
-            ULONG initialCapacity = 16;
+            ULONG initialCapacity = 1000;
             
             // Allocate initial thread history array
             targetProcessHistory->ThreadHistory = (PTHREAD_CREATE_ENTRY)ExAllocatePool2(
@@ -259,7 +259,7 @@ ThreadCreateNotifyWorkItemRoutine(
         
         // Add this thread to the history if we have space
         // Note: This simple implementation doesn't resize the array when full
-        if (targetProcessHistory->ThreadHistorySize < 16) // Only use the first 16 entries for simplicity
+        if (targetProcessHistory->ThreadHistorySize < 1000) // Only use the first 16 entries for simplicity
         {
             THREAD_CREATE_ENTRY* threadEntry = &targetProcessHistory->ThreadHistory[targetProcessHistory->ThreadHistorySize];
             
