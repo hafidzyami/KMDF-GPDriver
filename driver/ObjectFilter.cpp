@@ -202,7 +202,7 @@ ObjectFilter::BlockRegistryOperation(
 
     if (ValueName == NULL || ValueName->Length == 0 || ValueName->Buffer == NULL || ValueName->Length > (NTSTRSAFE_UNICODE_STRING_MAX_CCH * sizeof(WCHAR)))
     {
-        DBGPRINT("ObjectFilter!BlockRegistryOperation: ValueName is NULL.");
+        // DBGPRINT("ObjectFilter!BlockRegistryOperation: ValueName is NULL.");
         goto Exit;
     }
 

@@ -296,8 +296,8 @@ ThreadCreateNotifyWorkItemRoutine(
     }
     else
     {
-        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Unable to find process history for PID %p", 
-                workItem->ProcessId);
+        // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Unable to find process history for PID %p", 
+        //         workItem->ProcessId);
     }
     
     KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
@@ -1985,7 +1985,7 @@ ImageFilter::GetThreadStartAddress(
 	status = PsLookupThreadByThreadId(ThreadId, &threadObject);
 	if (NT_SUCCESS(status) == FALSE)
 	{
-		DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to lookup thread %p by its ID.", ThreadId);
+		// DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to lookup thread %p by its ID.", ThreadId);
 		goto Exit;
 	}
 
@@ -2054,8 +2054,8 @@ VOID ImageFilter::ThreadNotifyRoutine(
     // but we're not using that here since it causes compile errors
     
     // DEBUG: Log thread creation 
-    DBGPRINT("ImageFilter!ThreadNotifyRoutine: Thread %p created in process %p (thread count: %lu)",
-            ThreadId, ProcessId, processThreadCount);
+    // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Thread %p created in process %p (thread count: %lu)",
+    //         ThreadId, ProcessId, processThreadCount);
 
     // Create a work item to process at PASSIVE_LEVEL
     PTHREAD_CREATE_NOTIFY_WORKITEM workItem = (PTHREAD_CREATE_NOTIFY_WORKITEM)ExAllocatePool2(
@@ -2082,8 +2082,8 @@ VOID ImageFilter::ThreadNotifyRoutine(
     // Queue the work item to process this notification at PASSIVE_LEVEL
     ExQueueWorkItem(&workItem->WorkItem, DelayedWorkQueue);
     
-    DBGPRINT("ImageFilter!ThreadNotifyRoutine: Queued work item for thread ID %p in process %p",
-            ThreadId, ProcessId);
+    // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Queued work item for thread ID %p in process %p",
+    //         ThreadId, ProcessId);
 }
 
 /**
