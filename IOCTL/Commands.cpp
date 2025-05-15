@@ -160,8 +160,8 @@ void CommandProcessList()
     delete[] countBuffer;
     
     // Now allocate enough space for all the processes
-    // Make sure to use at least 50 as a minimum even if count is less
-    ULONG allocCount = max(50, processCount + 10); // Add some extra space just in case
+    // Make sure to use at least 1000 as a minimum even if count is less
+    ULONG allocCount = max(1000, processCount + 10); // Add some extra space just in case
     DWORD fullBufferSize = sizeof(PROCESS_LIST) + (allocCount - 1) * sizeof(PROCESS_INFO);
     
     std::cout << "Allocating buffer for " << allocCount << " processes (" << fullBufferSize << " bytes)" << std::endl;
