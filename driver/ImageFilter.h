@@ -1,3 +1,4 @@
+// Helper function for filtering safe process alerts
 #pragma once
 #include "common.h"
 #include "StackWalker.h"
@@ -10,6 +11,9 @@
 #define PROCESS_HISTORY_TAG 'hPmP'
 #define STACK_HISTORY_TAG 'hSmP'
 #define IMAGE_HISTORY_TAG 'hImP'
+
+// Helper function for filtering safe process alerts
+BOOLEAN IsSafeProcessForRemoteThreads(PWCHAR ProcessImagePath, HANDLE TargetProcessId);
 
 typedef struct ImageLoadHistoryEntry
 {

@@ -216,3 +216,75 @@ AlertQueue::FreeAlert(
 {
 	ExFreePoolWithTag(Alert, ALERT_QUEUE_ENTRY_TAG);
 }
+
+/**
+ * Copy all alerts in the queue without removing them
+ * @param AlertCopies Array to store pointers to alerts
+ * @param MaxAlerts Maximum number of alerts to copy
+ * @return Number of alerts copied
+ */
+ULONG
+AlertQueue::CopyAllAlerts(
+	_Out_ PBASE_ALERT_INFO* AlertCopies,
+	_In_ ULONG MaxAlerts
+	)
+{
+	if (this->destroying || AlertCopies == NULL || MaxAlerts == 0)
+	{
+		return 0;
+	}
+
+	ULONG alertCount = 0;
+	KIRQL oldIrql;
+	PLIST_ENTRY currentEntry;
+	PBASE_ALERT_INFO currentAlert;
+
+	// Acquire the lock for the entire operation
+	ExAcquireSpinLock(this->alertsLock, &oldIrql);
+
+	// Traverse the list and copy alert pointers
+	currentEntry = this->alertsHead.Entry.Flink;
+	while (currentEntry != RCAST<PLIST_ENTRY>(&this->alertsHead) && alertCount < MaxAlerts)
+	{
+		currentAlert = RCAST<PBASE_ALERT_INFO>(currentEntry);
+		AlertCopies[alertCount] = currentAlert;
+		alertCount++;
+		currentEntry = currentEntry->Flink;
+	}
+
+	ExReleaseSpinLock(this->alertsLock, oldIrql);
+	return alertCount;
+}
+
+/**
+ * Get the number of alerts in the queue
+ * @return Count of alerts currently in the queue
+ */
+ULONG
+AlertQueue::GetAlertCount(
+	VOID
+	)
+{
+	if (this->destroying)
+	{
+		return 0;
+	}
+
+	ULONG count = 0;
+	KIRQL oldIrql;
+	PLIST_ENTRY currentEntry;
+
+	// Acquire the lock for the operation
+	ExAcquireSpinLock(this->alertsLock, &oldIrql);
+
+	// Count the entries in the list
+	currentEntry = this->alertsHead.Entry.Flink;
+	while (currentEntry != RCAST<PLIST_ENTRY>(&this->alertsHead))
+	{
+		count++;
+		currentEntry = currentEntry->Flink;
+	}
+
+	ExReleaseSpinLock(this->alertsLock, oldIrql);
+	return count;
+}

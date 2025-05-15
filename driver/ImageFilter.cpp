@@ -7,6 +7,92 @@
 #define _countof(array) (sizeof(array) / sizeof(array[0]))
 #endif
 
+/**
+ * Helper function to determine if a process is in our known safe list
+ * when creating threads in the System process (PID 4)
+ */
+BOOLEAN IsSafeProcessForRemoteThreads(PWCHAR ProcessImagePath, HANDLE TargetProcessId)
+{
+    // If we have no path, we can't determine if it's safe
+    if (ProcessImagePath == NULL)
+    {
+        return FALSE;
+    }
+    
+    // Target process ID (converted to ULONG for easier comparison)
+    ULONG targetPid = HandleToUlong(TargetProcessId);
+    
+    // For any thread creation between Windows processes, we'll consider it safe
+    // Most of the alerts are for process ID 4 (System), which we'll filter based on source
+    
+    // Convert path to lowercase (without using RtlDowncaseUnicodeChar)
+    WCHAR lowerPath[MAX_PATH];
+    ULONG i;
+    
+    // Initialize the buffer
+    RtlZeroMemory(lowerPath, sizeof(lowerPath));
+    
+    // Copy and convert to lowercase (without using RtlDowncaseUnicodeChar)
+    for (i = 0; i < MAX_PATH - 1 && ProcessImagePath[i] != L'\0'; i++)
+    {
+        // Simple lowercase conversion for ASCII range
+        WCHAR ch = ProcessImagePath[i];
+        if (ch >= L'A' && ch <= L'Z')
+            lowerPath[i] = ch + (L'a' - L'A');
+        else
+            lowerPath[i] = ch;
+    }
+    lowerPath[i] = L'\0';  // Null terminate
+    
+    // ALLOW LIST: Any Windows-related processes are considered safe
+    // Most remote thread creation is legitimate Windows behavior
+    
+    // Windows system directories
+    if (wcsstr(lowerPath, L"\\windows\\") != NULL)
+    {
+        return TRUE;  // Any Windows directories and subdirectories are safe
+    }
+    
+    // Program Files directories (Microsoft components, browsers, etc.)
+    if (wcsstr(lowerPath, L"\\program files\\") != NULL ||
+        wcsstr(lowerPath, L"\\program files (x86)\\") != NULL)
+    {
+        // We still want to exclude certain directories even if they're in Program Files
+        // like temporary downloads or potentially untrusted locations
+        if (wcsstr(lowerPath, L"\\temp\\") == NULL &&
+            wcsstr(lowerPath, L"\\downloads\\") == NULL &&
+            wcsstr(lowerPath, L"\\appdata\\local\\temp\\") == NULL)
+        {
+            return TRUE;  // Program Files locations (except temp) are safe
+        }
+    }
+    
+    // DENY LIST: User directories are potentially suspicious
+    // (except for our own IOCTL.exe tool)
+    
+    // Check for our own tool
+    if (wcsstr(lowerPath, L"ioctl.exe") != NULL)
+    {
+        return TRUE;  // Our own tool is safe
+    }
+    
+    // Check for known suspicious paths
+    // These would be patterns often used by malware
+    if (wcsstr(lowerPath, L"\\temp\\") != NULL ||
+        wcsstr(lowerPath, L"\\downloads\\") != NULL ||
+        wcsstr(lowerPath, L"\\appdata\\local\\temp\\") != NULL ||
+        wcsstr(lowerPath, L".bat") != NULL ||  // Batch files
+        wcsstr(lowerPath, L".ps1") != NULL)    // PowerShell scripts
+    {
+        // These locations are potentially suspicious - don't filter these alerts
+        return FALSE;
+    }
+    
+    // DEFAULT POLICY: For process ID 4 (System), we filter out most benign alerts
+    // For other target processes, we keep all alerts
+    return (targetPid == 4);
+}
+
 // Work item structure for deferred image load processing
 typedef struct _IMAGE_LOAD_WORK_ITEM {
     WORK_QUEUE_ITEM WorkQueueItem;  // Must be first field for proper casting

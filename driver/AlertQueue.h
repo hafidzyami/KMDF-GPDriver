@@ -39,6 +39,25 @@ public:
 		_In_ ULONG MaxAlerts
 		);
 
+	/**
+	 * Copy all alerts in the queue without removing them
+	 * @param AlertCopies Array to store pointers to alerts
+	 * @param MaxAlerts Maximum number of alerts to copy
+	 * @return Number of alerts copied
+	 */
+	ULONG CopyAllAlerts (
+		_Out_ PBASE_ALERT_INFO* AlertCopies,
+		_In_ ULONG MaxAlerts
+		);
+
+	/**
+	 * Get the number of alerts in the queue
+	 * @return Count of alerts currently in the queue
+	 */
+	ULONG GetAlertCount (
+		VOID
+		);
+
 	BOOLEAN IsQueueEmpty (
 		VOID
 		);

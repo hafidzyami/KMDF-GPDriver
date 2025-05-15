@@ -812,70 +812,41 @@ void CommandAlerts(bool ClearAlerts)
         return;
     }
 
-    if (ClearAlerts)
-    {
-        // Clear alerts first
-        DWORD bytesReturned = 0;
-        BOOL success = DeviceIoControl(
-            hDevice,
-            IOCTL_CLEAR_ALERTS,
-            NULL, 0,
-            NULL, 0,
-            &bytesReturned,
-            NULL);
-
-        if (success)
-        {
-            std::cout << "Alerts cleared successfully." << std::endl;
-        }
-        else
-        {
-            std::cerr << "Failed to clear alerts: " << GetLastErrorAsString() << std::endl;
-            CloseDriverHandle(hDevice);
-            return;
-        }
-    }
-
-    // Get the alerts
+    // Get the alerts first (we want to show them even if we're going to clear them)
+    // Allocate a larger buffer to hold many alerts
     DWORD bytesReturned = 0;
-    DWORD bufferSize = sizeof(ALERT_LIST); // Minimum size for count
-    BYTE *buffer = nullptr;
-    BOOL success = false;
-
-    // Try first with a small buffer
-    buffer = new BYTE[bufferSize];
-    success = DeviceIoControl(
+    DWORD initialBufferSize = sizeof(ALERT_LIST) + 99 * sizeof(ALERT_INFO); // Space for 100 alerts initially
+    BYTE *buffer = new BYTE[initialBufferSize];
+    BOOL success = DeviceIoControl(
         hDevice,
         IOCTL_GET_ALERTS,
         NULL, 0,
-        buffer, bufferSize,
+        buffer, initialBufferSize,
         &bytesReturned,
         NULL);
 
     if (!success && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
     {
-        // Get the required size from the returned data
-        PALERT_LIST pList = reinterpret_cast<PALERT_LIST>(buffer);
-        bufferSize = sizeof(ALERT_LIST) + (pList->Count - 1) * sizeof(ALERT_INFO);
-
-        // Reallocate buffer with correct size
+        // Try with an even larger buffer - allocate enough for 1000 alerts
         delete[] buffer;
-        buffer = new BYTE[bufferSize];
-
-        // Try again with correctly sized buffer
+        DWORD largerBufferSize = sizeof(ALERT_LIST) + 999 * sizeof(ALERT_INFO);
+        buffer = new BYTE[largerBufferSize];
+        
         success = DeviceIoControl(
             hDevice,
             IOCTL_GET_ALERTS,
             NULL, 0,
-            buffer, bufferSize,
+            buffer, largerBufferSize,
             &bytesReturned,
             NULL);
     }
 
+    // Process the results
     if (success)
     {
         PALERT_LIST pList = reinterpret_cast<PALERT_LIST>(buffer);
 
+        // Display the alerts
         if (pList->Count == 0)
         {
             std::cout << "No alerts to display." << std::endl;
@@ -956,7 +927,31 @@ void CommandAlerts(bool ClearAlerts)
         std::cerr << "Failed to get alerts: " << GetLastErrorAsString() << std::endl;
     }
 
+    // Clean up the buffer
     delete[] buffer;
+
+    // Clear alerts if requested
+    if (ClearAlerts)
+    {
+        DWORD bytesReturned = 0;
+        BOOL clearSuccess = DeviceIoControl(
+            hDevice,
+            IOCTL_CLEAR_ALERTS,
+            NULL, 0,
+            NULL, 0,
+            &bytesReturned,
+            NULL);
+
+        if (clearSuccess)
+        {
+            std::cout << "Alerts cleared successfully." << std::endl;
+        }
+        else
+        {
+            std::cerr << "Failed to clear alerts: " << GetLastErrorAsString() << std::endl;
+        }
+    }
+
     CloseDriverHandle(hDevice);
 }
 

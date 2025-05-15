@@ -733,29 +733,86 @@ HandleGetAlerts(
     {
         PALERT_QUEUE alertQueue = TDriverClass::GetDetector()->GetAlertQueue();
 
-        // Check if there are any alerts in the queue
-        if (!alertQueue->IsQueueEmpty())
+        // Get the total number of alerts in the queue
+        ULONG totalAlerts = alertQueue->GetAlertCount();
+        DbgPrint("[IOCTL] Total alerts in queue: %lu\n", totalAlerts);
+        
+        // Allocate a temporary buffer to store all alerts
+        if (totalAlerts > 0)
         {
-            // Use our compatible implementation instead of the direct function call
-            actualCount = PopMultipleAlertsCompat(alertQueue, pList->Alerts, maxAlerts);
+            // Create a copy of all alerts - prevent losing alerts when retrieving them
+            PBASE_ALERT_INFO* alertCopies = (PBASE_ALERT_INFO*)ExAllocatePool2(POOL_FLAG_PAGED, 
+                                                                          totalAlerts * sizeof(PBASE_ALERT_INFO),
+                                                                          'ALCP');
+            if (alertCopies == NULL)
+            {
+                DbgPrint("[IOCTL] Failed to allocate memory for alert copies\n");
+                status = STATUS_INSUFFICIENT_RESOURCES;
+                goto Exit;
+            }
 
-            if (actualCount > 0)
+            // First, get all alerts from the queue without removing them
+            ULONG fetchedCount = alertQueue->CopyAllAlerts(alertCopies, totalAlerts);
+            DbgPrint("[IOCTL] Copied %lu alerts from queue\n", fetchedCount);
+
+            // Convert the temporary alerts to the user-mode format
+            // Only copy up to maxAlerts or totalAlerts, whichever is smaller
+            ULONG copyCount = min(fetchedCount, maxAlerts);
+            
+            for (ULONG i = 0; i < copyCount; i++)
             {
-                DbgPrint("[IOCTL] Successfully retrieved %lu alerts from queue", actualCount);
+                if (alertCopies[i] != NULL)
+                {
+                    // Convert to ALERT_INFO structure
+                    pList->Alerts[i].AlertId = i + 1;
+                    pList->Alerts[i].Type = (ALERT_TYPE)alertCopies[i]->AlertType;
+                    pList->Alerts[i].SourceProcessId = HandleToUlong(alertCopies[i]->SourceId);
+
+                    // Copy source path
+                    RtlZeroMemory(pList->Alerts[i].SourcePath, MAX_PATH * sizeof(WCHAR));
+                    RtlCopyMemory(pList->Alerts[i].SourcePath,
+                                alertCopies[i]->SourcePath,
+                                min(MAX_PATH * sizeof(WCHAR), sizeof(alertCopies[i]->SourcePath)));
+
+                    // Copy target path
+                    RtlZeroMemory(pList->Alerts[i].TargetPath, MAX_PATH * sizeof(WCHAR));
+                    RtlCopyMemory(pList->Alerts[i].TargetPath,
+                                alertCopies[i]->TargetPath,
+                                min(MAX_PATH * sizeof(WCHAR), sizeof(alertCopies[i]->TargetPath)));
+
+                    // Get current time
+                    KeQuerySystemTime(&pList->Alerts[i].Timestamp);
+                    
+                    // Set additional fields if they exist in the source
+                    if (alertCopies[i]->AlertType == AlertTypeRemoteThreadCreation ||
+                        alertCopies[i]->AlertType == AlertTypeParentProcessIdSpoofing)
+                    {
+                        PREMOTE_OPERATION_ALERT remoteOpAlert = (PREMOTE_OPERATION_ALERT)alertCopies[i];
+                        pList->Alerts[i].TargetProcessId = HandleToUlong(remoteOpAlert->RemoteTargetId);
+                    }
+                    else if (alertCopies[i]->AlertType == AlertTypeStackViolation)
+                    {
+                        PSTACK_VIOLATION_ALERT stackAlert = (PSTACK_VIOLATION_ALERT)alertCopies[i];
+                        pList->Alerts[i].ViolatingAddress = (ULONG_PTR)stackAlert->ViolatingAddress;
+                    }
+                }
             }
-            else
+
+            // Free the temporary alert copies but not the actual alerts
+            for (ULONG i = 0; i < fetchedCount; i++)
             {
-                DbgPrint("[IOCTL] No alerts were retrieved from the queue");
+                // The alert queue will take care of freeing the actual alerts
+                // We're just freeing the array that holds the pointers
             }
-        }
-        else
-        {
-            DbgPrint("[IOCTL] Alert queue is empty");
+            ExFreePool(alertCopies);
+            
+            // Set the count in the result
+            actualCount = copyCount;
         }
     }
 
     pList->Count = actualCount;
-    bytesReturned = sizeof(ALERT_LIST) + (actualCount - 1) * sizeof(ALERT_INFO);
+    bytesReturned = sizeof(ALERT_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(ALERT_INFO) : 0);
 
     DbgPrint("[IOCTL] Successfully returned %lu alerts\n", actualCount);
 

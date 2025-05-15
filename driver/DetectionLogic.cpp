@@ -6,6 +6,7 @@
  */
 #include "pch.h"
 #include "DetectionLogic.h"
+#include "ImageFilter.h"
 
 /**
 	Initialize class members.
@@ -234,6 +235,25 @@ DetectionLogic::AuditCallerProcessId(
 	if (CallerProcessId == TargetProcessId)
 	{
 		return;
+	}
+
+	// Filter out known safe processes creating threads in System process (PID 4)
+	if (DetectionSource == ThreadCreate && SourcePath != NULL)
+	{
+		// Use our helper function to check if this is a safe process
+		if (IsSafeProcessForRemoteThreads(SourcePath->Buffer, TargetProcessId))
+		{
+			// This is a safe process creating a thread in System (PID 4), don't create an alert
+			return;
+		}
+		
+		// Also add a check for IOCTL.exe or other tools directly
+		if ((HandleToUlong(TargetProcessId) == 4) && 
+		    (wcsstr(SourcePath->Buffer, L"IOCTL.exe") != NULL))
+		{
+			// This is our own IOCTL client tool, don't alert
+			return;
+		}
 	}
 
 	//
