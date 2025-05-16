@@ -278,7 +278,7 @@ VOID ThreadCreateNotifyWorkItemRoutine(
 
             // Allocate initial thread history array
             targetProcessHistory->ThreadHistory = (PTHREAD_CREATE_ENTRY)ExAllocatePool2(
-                POOL_FLAG_PAGED,
+                POOL_FLAG_NON_PAGED,
                 sizeof(THREAD_CREATE_ENTRY) * initialCapacity,
                 'ThHI');
 
