@@ -53,16 +53,20 @@ BOOLEAN IsSafeProcessForRemoteThreads(PWCHAR ProcessImagePath, HANDLE TargetProc
         return TRUE;  // Any Windows directories and subdirectories are safe
     }
 
+    // Extract the filename from the path
+    PWCHAR fileName = wcsrchr(lowerPath, L'\\');
     if (fileName != NULL)
     {
+        fileName++; // Skip the backslash
+        
         static const WCHAR *knownSafeProcesses[] = {
             L"services.exe", L"csrss.exe", L"lsass.exe", L"svchost.exe",
             L"dwm.exe", L"wininit.exe", L"runtimebroker.exe", L"explorer.exe",
             L"taskmgr.exe", L"winlogon.exe", L"conhost.exe", L"dllhost.exe"};
 
-        for (int i = 0; i < _countof(knownSafeProcesses); i++)
+        for (int j = 0; j < _countof(knownSafeProcesses); j++)
         {
-            if (_wcsicmp(fileName, knownSafeProcesses[i]) == 0)
+            if (_wcsicmp(fileName, knownSafeProcesses[j]) == 0)
             {
                 return TRUE; // Known safe system process
             }
@@ -83,12 +87,13 @@ BOOLEAN IsSafeProcessForRemoteThreads(PWCHAR ProcessImagePath, HANDLE TargetProc
         return TRUE; // Known trusted applications
     }
 
-    if (targetPid == 4 ||                                // System process
-        (ULONG_PTR)ThreadStartAddress >= 0x7FF000000000) // Typically mapped system DLLs
+    if (targetPid == 4) // System process
     {
-        // System process with high address is usually legitimate
+        // System process is usually legitimate
         return TRUE;
     }
+
+    // NOTE: ThreadStartAddress check removed since we don't have this parameter
 
     if (wcsstr(lowerPath, L"\\temp\\") != NULL ||
         wcsstr(lowerPath, L"\\temporary internet files\\") != NULL ||
@@ -102,11 +107,7 @@ BOOLEAN IsSafeProcessForRemoteThreads(PWCHAR ProcessImagePath, HANDLE TargetProc
         return FALSE; // Suspicious location
     }
 
-    if ((ULONG_PTR)ThreadStartAddress < 0x10000 ||    // NULL page
-        ((ULONG_PTR)ThreadStartAddress & 0xFFF) == 0) // Page-aligned memory (often allocated)
-    {
-        return FALSE; // Suspicious thread start address
-    }
+    // NOTE: ThreadStartAddress check removed since we don't have this parameter
 
     // Program Files directories (Microsoft components, browsers, etc.)
     if (wcsstr(lowerPath, L"\\program files\\") != NULL ||
@@ -131,17 +132,7 @@ BOOLEAN IsSafeProcessForRemoteThreads(PWCHAR ProcessImagePath, HANDLE TargetProc
         return TRUE; // Our own tool is safe
     }
 
-    // Check for known suspicious paths
-    // These would be patterns often used by malware
-    if (wcsstr(lowerPath, L"\\temp\\") != NULL ||
-        wcsstr(lowerPath, L"\\downloads\\") != NULL ||
-        wcsstr(lowerPath, L"\\appdata\\local\\temp\\") != NULL ||
-        wcsstr(lowerPath, L".bat") != NULL || // Batch files
-        wcsstr(lowerPath, L".ps1") != NULL)   // PowerShell scripts
-    {
-        // These locations are potentially suspicious - don't filter these alerts
-        return FALSE;
-    }
+    // Duplicate check removed (already handled above)
 
     // For other target processes, we keep all alerts
     return FALSE;
