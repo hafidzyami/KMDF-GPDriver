@@ -293,13 +293,6 @@ class RegistryDataExporter:
                         print(f"Actual header: {header}")
                     else:
                         print("CSV format validation successful")
-                
-                # Try to open the file with default application
-                try:
-                    print(f"Attempting to open CSV file with default application...")
-                    os.startfile(output_path)
-                except Exception as e:
-                    print(f"Note: Could not open CSV file with default application: {e}")
             except Exception as e:
                 print(f"Note: Could not verify CSV format: {e}")
             
@@ -354,9 +347,6 @@ def main():
         # Always close the device handle
         if exporter.device_handle is not None:
             exporter.close_device()
-    
-    print("\nPress Enter to exit...")
-    input()
 
 if __name__ == "__main__":
     # Import traceback conditionally to avoid errors if not available
