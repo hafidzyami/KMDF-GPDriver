@@ -1455,44 +1455,41 @@ void ExportAlertsToCsv(const std::string &Filename)
         return;
     }
 
-    // Get the alerts
+    // Use the same approach as CommandAlerts - allocate a large buffer directly
     DWORD bytesReturned = 0;
-    DWORD bufferSize = sizeof(ALERT_LIST); // Minimum size for count
-    BYTE *buffer = nullptr;
-    BOOL success = false;
-
-    // Try first with a small buffer
-    buffer = new BYTE[bufferSize];
-    success = DeviceIoControl(
+    DWORD initialBufferSize = sizeof(ALERT_LIST) + 99 * sizeof(ALERT_INFO); // Space for 100 alerts initially
+    BYTE *buffer = new BYTE[initialBufferSize];
+    BOOL success = DeviceIoControl(
         hDevice,
         IOCTL_GET_ALERTS,
         NULL, 0,
-        buffer, bufferSize,
+        buffer, initialBufferSize,
         &bytesReturned,
         NULL);
 
     if (!success && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
     {
-        // Get the required size from the returned data
-        PALERT_LIST pList = reinterpret_cast<PALERT_LIST>(buffer);
-        bufferSize = sizeof(ALERT_LIST) + (pList->Count - 1) * sizeof(ALERT_INFO);
-
-        // Reallocate buffer with correct size
+        // Try with an even larger buffer - allocate enough for 1000 alerts
         delete[] buffer;
-        buffer = new BYTE[bufferSize];
-
-        // Try again with correctly sized buffer
+        DWORD largerBufferSize = sizeof(ALERT_LIST) + 999 * sizeof(ALERT_INFO);
+        buffer = new BYTE[largerBufferSize];
+        
         success = DeviceIoControl(
             hDevice,
             IOCTL_GET_ALERTS,
             NULL, 0,
-            buffer, bufferSize,
+            buffer, largerBufferSize,
             &bytesReturned,
             NULL);
     }
 
     if (success)
     {
+        PALERT_LIST pList = reinterpret_cast<PALERT_LIST>(buffer);
+        
+        // Debug output to see what we're getting
+        std::cout << "Retrieved " << pList->Count << " alerts for export" << std::endl;
+
         // Open CSV file
         std::ofstream csvFile(Filename);
         if (!csvFile.is_open())
@@ -1507,7 +1504,6 @@ void ExportAlertsToCsv(const std::string &Filename)
         csvFile << "AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath" << std::endl;
 
         // Write alert data
-        PALERT_LIST pList = reinterpret_cast<PALERT_LIST>(buffer);
         for (ULONG i = 0; i < pList->Count; i++)
         {
             ALERT_INFO &alert = pList->Alerts[i];
