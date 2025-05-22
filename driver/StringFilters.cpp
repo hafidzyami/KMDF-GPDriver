@@ -128,7 +128,7 @@ StringFilters::AddFilter (
 	newFilter = RCAST<PFILTER_INFO_LINKED>(ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, sizeof(FILTER_INFO_LINKED), FILTER_INFO_TAG));
 	if (newFilter == NULL)
 	{
-		DBGPRINT("Failed to allocate space for filter info.");
+		// DBGPRINT("Failed to allocate space for filter info.");
 		goto Exit;
 	}
 
@@ -352,7 +352,7 @@ StringFilters::GetFilters (
 			if (skipCount >= SkipFilters)
 			{
 				memcpy_s(&Filters[copyCount], sizeof(FILTER_INFO), &currentFilter->Filter, sizeof(FILTER_INFO));
-				DBGPRINT("StringFilters!GetFilters: Copying filter ID 0x%X.", currentFilter->Filter.Id);
+				// DBGPRINT("StringFilters!GetFilters: Copying filter ID 0x%X.", currentFilter->Filter.Id);
 				copyCount++;
 			}
 			skipCount++;
@@ -392,7 +392,7 @@ StringFilters::SaveFilters (
 	filterStore = RCAST<PFILTER_STORE>(ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, FILTER_STORE_SIZE(this->filtersCount), FILTER_INFO_TAG));
 	if (filterStore == NULL)
 	{
-		DBGPRINT("StringFilters!SaveFilters: Failed to allocate space for the filter store with size %i.", this->filtersCount);
+		// DBGPRINT("StringFilters!SaveFilters: Failed to allocate space for the filter store with size %i.", this->filtersCount);
 		goto Exit;
 	}
 	memset(filterStore, 0, sizeof(filterStore));
@@ -430,7 +430,7 @@ StringFilters::SaveFilters (
 	status = ZwOpenKey(&driverRegistryKey, KEY_ALL_ACCESS, &driverRegistryAttributes);
 	if (NT_SUCCESS(status) == FALSE)
 	{
-		DBGPRINT("StringFilters!SaveFilters: Failed to open driver registry key with status 0x%X.", status);
+		// DBGPRINT("StringFilters!SaveFilters: Failed to open driver registry key with status 0x%X.", status);
 		goto Exit;
 	}
 
@@ -440,7 +440,7 @@ StringFilters::SaveFilters (
 	status = ZwSetValueKey(driverRegistryKey, &this->filterStoreValueName, 0, REG_BINARY, filterStore, FILTER_STORE_SIZE(this->filtersCount));
 	if (NT_SUCCESS(status) == FALSE)
 	{
-		DBGPRINT("StringFilters!SaveFilters: Failed to write filter store to driver registry key with status 0x%X.", status);
+		// DBGPRINT("StringFilters!SaveFilters: Failed to write filter store to driver registry key with status 0x%X.", status);
 		goto Exit;
 	}
 	result = TRUE;
@@ -486,7 +486,7 @@ StringFilters::RestoreFilters (
 	status = ZwOpenKey(&driverRegistryKey, KEY_ALL_ACCESS, &driverRegistryAttributes);
 	if (NT_SUCCESS(status) == FALSE)
 	{
-		DBGPRINT("StringFilters!RestoreFilters: Failed to open driver registry key with status 0x%X.", status);
+		// DBGPRINT("StringFilters!RestoreFilters: Failed to open driver registry key with status 0x%X.", status);
 		goto Exit;
 	}
 	
@@ -496,7 +496,7 @@ StringFilters::RestoreFilters (
 	status = ZwQueryValueKey(driverRegistryKey, &this->filterStoreValueName, KeyValuePartialInformation, NULL, 0, &filterStorePartialSize);
 	if (status != STATUS_BUFFER_TOO_SMALL)
 	{
-		DBGPRINT("StringFilters!RestoreFilters: Failed to query filter store size with status 0x%X.", status);
+		// DBGPRINT("StringFilters!RestoreFilters: Failed to query filter store size with status 0x%X.", status);
 		goto Exit;
 	}
 	
@@ -507,7 +507,7 @@ StringFilters::RestoreFilters (
 	status = ZwQueryValueKey(driverRegistryKey, &this->filterStoreValueName, KeyValuePartialInformation, filterStorePartial, filterStorePartialSize, &filterStorePartialSize);
 	if (NT_SUCCESS(status) == FALSE)
 	{
-		DBGPRINT("StringFilters!RestoreFilters: Failed to query filter store with status 0x%X.", status);
+		// DBGPRINT("StringFilters!RestoreFilters: Failed to query filter store with status 0x%X.", status);
 		goto Exit;
 	}
 	

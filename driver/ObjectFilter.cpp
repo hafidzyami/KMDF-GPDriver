@@ -42,7 +42,7 @@ ObjectFilter::ObjectFilter(
     ObjectFilter::RegistryStringFilters = new (NonPagedPool, STRING_REGISTRY_FILTERS_TAG) StringFilters(RegistryFilter, RegistryPath, L"RegistryFilterStore");
     if (ObjectFilter::RegistryStringFilters == NULL)
     {
-        DBGPRINT("ObjectFilter!ObjectFilter: Failed to allocate memory for string filters.");
+        // DBGPRINT("ObjectFilter!ObjectFilter: Failed to allocate memory for string filters.");
         *InitializeStatus = STATUS_NO_MEMORY;
         return;
     }
@@ -57,7 +57,7 @@ ObjectFilter::ObjectFilter(
     ObjectFilter::registryAnalyzer = new (NonPagedPool, 'aRmP') RegistryAnalyzer();
     if (ObjectFilter::registryAnalyzer == NULL)
     {
-        DBGPRINT("ObjectFilter!ObjectFilter: Failed to allocate memory for registry analyzer.");
+        // DBGPRINT("ObjectFilter!ObjectFilter: Failed to allocate memory for registry analyzer.");
         *InitializeStatus = STATUS_NO_MEMORY;
         return;
     }
@@ -73,7 +73,7 @@ ObjectFilter::ObjectFilter(
     tempStatus = CmRegisterCallbackEx(RCAST<PEX_CALLBACK_FUNCTION>(ObjectFilter::RegistryCallback), &filterAltitude, DriverObject, NULL, &RegistryFilterCookie, NULL);
     if (NT_SUCCESS(tempStatus) == FALSE)
     {
-        DBGPRINT("ObjectFilter!ObjectFilter: Failed to register registry callback with status 0x%X.", tempStatus);
+        // DBGPRINT("ObjectFilter!ObjectFilter: Failed to register registry callback with status 0x%X.", tempStatus);
         *InitializeStatus = tempStatus;
         return;
     }
@@ -112,7 +112,7 @@ ObjectFilter::ObjectFilter(
     tempStatus = ObRegisterCallbacks(&ObRegistrationInformation, &RegistrationHandle);
     if (NT_SUCCESS(tempStatus) == FALSE)
     {
-        DBGPRINT("ObjectFilter!ObjectFilter: Failed to register object callbacks with status 0x%X.", tempStatus);
+        // DBGPRINT("ObjectFilter!ObjectFilter: Failed to register object callbacks with status 0x%X.", tempStatus);
         *InitializeStatus = tempStatus;
         return;
     }
@@ -209,7 +209,7 @@ ObjectFilter::BlockRegistryOperation(
     tempValueName = RCAST<PWCHAR>(ExAllocatePool2(POOL_FLAG_NON_PAGED, ValueName->Length, REGISTRY_KEY_NAME_TAG));
     if (tempValueName == NULL)
     {
-        DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to allocate memory for value name with size 0x%X.", ValueName->Length);
+        // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to allocate memory for value name with size 0x%X.", ValueName->Length);
         goto Exit;
     }
 
@@ -225,14 +225,14 @@ ObjectFilter::BlockRegistryOperation(
         internalStatus = ObOpenObjectByPointer(KeyObject, OBJ_KERNEL_HANDLE, NULL, GENERIC_ALL, *CmKeyObjectType, KernelMode, &keyHandle);
         if (NT_SUCCESS(internalStatus) == FALSE)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to open a handle to a key object with status 0x%X.", internalStatus);
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to open a handle to a key object with status 0x%X.", internalStatus);
             goto Exit;
         }
 
         ZwQueryKey(keyHandle, KeyNameInformation, NULL, 0, &returnLength);
         if (returnLength == 0)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to determine size of key name.");
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to determine size of key name.");
             goto Exit;
         }
 
@@ -240,7 +240,7 @@ ObjectFilter::BlockRegistryOperation(
         pKeyNameInformation = RCAST<PKEY_NAME_INFORMATION>(ExAllocatePool2(POOL_FLAG_PAGED, returnLength, REGISTRY_KEY_NAME_TAG));
         if (pKeyNameInformation == NULL)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to allocate memory for key name with size 0x%X.", returnLength);
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to allocate memory for key name with size 0x%X.", returnLength);
             goto Exit;
         }
 
@@ -250,7 +250,7 @@ ObjectFilter::BlockRegistryOperation(
         internalStatus = ZwQueryKey(keyHandle, KeyNameInformation, pKeyNameInformation, returnLength, &returnLength);
         if (NT_SUCCESS(internalStatus) == FALSE)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to query name of key object with status 0x%X.", internalStatus);
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to query name of key object with status 0x%X.", internalStatus);
             goto Exit;
         }
 
@@ -261,7 +261,7 @@ ObjectFilter::BlockRegistryOperation(
         fullKeyValueName = RCAST<PWCHAR>(ExAllocatePool2(POOL_FLAG_NON_PAGED, fullKeyValueLength, REGISTRY_KEY_NAME_TAG));
         if (fullKeyValueName == NULL)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to allocate memory for full key/value name with size 0x%X.", fullKeyValueLength);
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to allocate memory for full key/value name with size 0x%X.", fullKeyValueLength);
             goto Exit;
         }
 
@@ -271,7 +271,7 @@ ObjectFilter::BlockRegistryOperation(
         internalStatus = RtlStringCbCopyNW(fullKeyValueName, fullKeyValueLength, RCAST<PCWSTR>(&pKeyNameInformation->Name), pKeyNameInformation->NameLength);
         if (NT_SUCCESS(internalStatus) == FALSE)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to copy key name with status 0x%X.", internalStatus);
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to copy key name with status 0x%X.", internalStatus);
             goto Exit;
         }
 
@@ -281,7 +281,7 @@ ObjectFilter::BlockRegistryOperation(
         internalStatus = RtlStringCbCatW(fullKeyValueName, fullKeyValueLength, L"\\");
         if (NT_SUCCESS(internalStatus) == FALSE)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to concatenate backslash with status 0x%X.", internalStatus);
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to concatenate backslash with status 0x%X.", internalStatus);
             goto Exit;
         }
 
@@ -291,13 +291,13 @@ ObjectFilter::BlockRegistryOperation(
         internalStatus = RtlStringCbCatNW(fullKeyValueName, fullKeyValueLength, ValueName->Buffer, ValueName->Length);
         if (NT_SUCCESS(internalStatus) == FALSE)
         {
-            DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to concatenate value name with status 0x%X.", internalStatus);
+            // DBGPRINT("ObjectFilter!BlockRegistryOperation: Failed to concatenate value name with status 0x%X.", internalStatus);
             goto Exit;
         }
 
         blockOperation = ObjectFilter::RegistryStringFilters->MatchesFilter(fullKeyValueName, OperationFlag);
 
-        //DBGPRINT("ObjectFilter!BlockRegistryOperation: Full name: %S.", fullKeyValueName);
+        // DBGPRINT("ObjectFilter!BlockRegistryOperation: Full name: %S.", fullKeyValueName);
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {}
@@ -534,7 +534,7 @@ ObjectFilter::RegistryCallback(
             setValueInformation = RCAST<PREG_SET_VALUE_KEY_INFORMATION>(Argument2);
             if (BlockRegistryOperation(setValueInformation->Object, setValueInformation->ValueName, FILTER_FLAG_WRITE))
             {
-                DBGPRINT("ObjectFilter!RegistryCallback: Detected RegNtPreSetValueKey of %wZ. Prevented set!", setValueInformation->ValueName);
+                // DBGPRINT("ObjectFilter!RegistryCallback: Detected RegNtPreSetValueKey of %wZ. Prevented set!", setValueInformation->ValueName);
                 returnStatus = STATUS_ACCESS_DENIED;
             }
             break;
@@ -542,7 +542,7 @@ ObjectFilter::RegistryCallback(
             deleteValueInformation = RCAST<PREG_DELETE_VALUE_KEY_INFORMATION>(Argument2);
             if (BlockRegistryOperation(deleteValueInformation->Object, deleteValueInformation->ValueName, FILTER_FLAG_DELETE))
             {
-                DBGPRINT("ObjectFilter!RegistryCallback: Detected RegNtPreDeleteValueKey of %wZ. Prevented deletion!", deleteValueInformation->ValueName);
+                // DBGPRINT("ObjectFilter!RegistryCallback: Detected RegNtPreDeleteValueKey of %wZ. Prevented deletion!", deleteValueInformation->ValueName);
                 returnStatus = STATUS_ACCESS_DENIED;
             }
             break;
@@ -633,7 +633,7 @@ ObjectFilter::PreOperationCallback(
         break;
     }
 
-    DBGPRINT("ObjectFilter!PreOperationCallback: Stripped process 0x%X terminate handle on protected process.", callerProcessId);
+    // DBGPRINT("ObjectFilter!PreOperationCallback: Stripped process 0x%X terminate handle on protected process.", callerProcessId);
 
     return OB_PREOP_SUCCESS;
 }

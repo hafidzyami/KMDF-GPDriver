@@ -46,7 +46,7 @@ StackWalker::ResolveAddressModule (
             mappedFilename = RCAST<PUNICODE_STRING>(ExAllocatePool2(POOL_FLAG_NON_PAGED, mappedFilenameLength, STACK_WALK_MAPPED_NAME));
             if (mappedFilename == NULL)
             {
-                DBGPRINT("StackWalker!ResolveAddressModule: Failed to allocate module name.");
+                // DBGPRINT("StackWalker!ResolveAddressModule: Failed to allocate module name.");
                 return;
             }
 
@@ -74,7 +74,7 @@ StackWalker::ResolveAddressModule (
                                                        STACK_WALK_MAPPED_NAME));
                 if (mappedFilename == NULL)
                 {
-                    DBGPRINT("StackWalker!ResolveAddressModule: Failed to allocate module name.");
+                    // DBGPRINT("StackWalker!ResolveAddressModule: Failed to allocate module name.");
                     return;
                 }
                 
@@ -91,7 +91,7 @@ StackWalker::ResolveAddressModule (
 
             if (NT_SUCCESS(status) == FALSE)
             {
-                DBGPRINT("StackWalker!ResolveAddressModule: Failed to query memory module name with status 0x%X.", status);
+                // DBGPRINT("StackWalker!ResolveAddressModule: Failed to query memory module name with status 0x%X.", status);
                 ExFreePoolWithTag(mappedFilename, STACK_WALK_MAPPED_NAME);
                 return;
             }
@@ -107,8 +107,7 @@ StackWalker::ResolveAddressModule (
                                                mappedFilename);
                 }
                 __except(EXCEPTION_EXECUTE_HANDLER) {
-                    DBGPRINT("StackWalker!ResolveAddressModule: Exception copying mapped name: 0x%X", 
-                             GetExceptionCode());
+                    // DBGPRINT("StackWalker!ResolveAddressModule: Exception copying mapped name: 0x%X", GetExceptionCode());
                 }
             }
 
@@ -119,8 +118,7 @@ StackWalker::ResolveAddressModule (
         }
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {
-        DBGPRINT("StackWalker!ResolveAddressModule: Exception resolving address 0x%llx: 0x%X", 
-                 RCAST<ULONG64>(Address), GetExceptionCode());
+        // DBGPRINT("StackWalker!ResolveAddressModule: Exception resolving address 0x%llx: 0x%X", RCAST<ULONG64>(Address), GetExceptionCode());
                  
         // Ensure we free the allocation if an exception occurred
         if (mappedFilename != NULL) {
@@ -163,8 +161,7 @@ StackWalker::IsAddressExecutable (
                                      
         if (NT_SUCCESS(status) == FALSE)
         {
-            DBGPRINT("StackWalker!IsAddressExecutable: Failed to query virtual memory for address 0x%llx with status 0x%X.", 
-                     RCAST<ULONG64>(Address), status);
+            // DBGPRINT("StackWalker!IsAddressExecutable: Failed to query virtual memory for address 0x%llx with status 0x%X.", RCAST<ULONG64>(Address), status);
             return FALSE;
         }
 
@@ -177,8 +174,7 @@ StackWalker::IsAddressExecutable (
                  FlagOn(memoryBasicInformation.AllocationProtect, PAGE_EXECUTE_WRITECOPY);
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {
-        DBGPRINT("StackWalker!IsAddressExecutable: Exception checking address 0x%llx: 0x%X", 
-                 RCAST<ULONG64>(Address), GetExceptionCode());
+        // DBGPRINT("StackWalker!IsAddressExecutable: Exception checking address 0x%llx: 0x%X", RCAST<ULONG64>(Address), GetExceptionCode());
         executable = FALSE;
     }
 
@@ -209,8 +205,7 @@ StackWalker::WalkAndResolveStack (
     // Check if we can do stack walking at the current IRQL
     // Stack walking is only reliable at PASSIVE_LEVEL
     if (KeGetCurrentIrql() > PASSIVE_LEVEL) {
-        DBGPRINT("StackWalker!WalkAndResolveStack: IRQL too high (%d) for reliable stack walking, will create minimal stack", 
-                 KeGetCurrentIrql());
+        // DBGPRINT("StackWalker!WalkAndResolveStack: IRQL too high (%d) for reliable stack walking, will create minimal stack", KeGetCurrentIrql());
         
         // Provide a minimal dummy stack entry to avoid null pointers
         *ResolvedStack = RCAST<PSTACK_RETURN_INFO>(ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(STACK_RETURN_INFO), ResolvedStackTag));
@@ -236,7 +231,7 @@ StackWalker::WalkAndResolveStack (
     stackReturnPtrs = RCAST<PVOID*>(ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PVOID) * *ResolvedStackSize, STACK_WALK_ARRAY_TAG));
     if (stackReturnPtrs == NULL)
     {
-        DBGPRINT("StackWalker!WalkAndResolveStack: Failed to allocate space for temporary stack array.");
+        // DBGPRINT("StackWalker!WalkAndResolveStack: Failed to allocate space for temporary stack array.");
         *ResolvedStackSize = 0;
         return;
     }
@@ -255,7 +250,7 @@ StackWalker::WalkAndResolveStack (
         }
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {
-        DBGPRINT("StackWalker!WalkAndResolveStack: Exception during RtlWalkFrameChain: 0x%X", GetExceptionCode());
+        // DBGPRINT("StackWalker!WalkAndResolveStack: Exception during RtlWalkFrameChain: 0x%X", GetExceptionCode());
         goto Exit;
     }
 
@@ -278,7 +273,7 @@ StackWalker::WalkAndResolveStack (
                                                ResolvedStackTag));
     if (*ResolvedStack == NULL)
     {
-        DBGPRINT("StackWalker!WalkAndResolveStack: Failed to allocate space for stack info array.");
+        // DBGPRINT("StackWalker!WalkAndResolveStack: Failed to allocate space for stack info array.");
         goto Exit;
     }
     memset(*ResolvedStack, 0, sizeof(STACK_RETURN_INFO) * *ResolvedStackSize);
@@ -306,8 +301,7 @@ StackWalker::WalkAndResolveStack (
             }
         }
         __except(EXCEPTION_EXECUTE_HANDLER) {
-            DBGPRINT("StackWalker!WalkAndResolveStack: Exception during stack analysis batch %d-%d: 0x%X", 
-                     i, batchEnd, GetExceptionCode());
+            // DBGPRINT("StackWalker!WalkAndResolveStack: Exception during stack analysis batch %d-%d: 0x%X", i, batchEnd, GetExceptionCode());
             // Continue with the next batch rather than abandoning the entire operation
         }
     }

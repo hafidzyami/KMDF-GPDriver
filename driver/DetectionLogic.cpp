@@ -73,7 +73,7 @@ DetectionLogic::AuditUserStackWalk (
 			StackHistory[i].RawAddress != 0x0 &&
 			RCAST<ULONG64>(StackHistory[i].RawAddress) < MmUserProbeAddress)
 		{
-			DBGPRINT("DetectionLogic!AuditUserStackWalk: Alert pid 0x%X, Violate 0x%llx, Source %i", PsGetCurrentProcessId(), StackHistory[i].RawAddress, DetectionSource);
+			// DBGPRINT("DetectionLogic!AuditUserStackWalk: Alert pid 0x%X, Violate 0x%llx, Source %i", PsGetCurrentProcessId(), StackHistory[i].RawAddress, DetectionSource);
 			stackViolation = TRUE;
 			firstViolatingAddress = StackHistory[i].RawAddress;
 			break;
@@ -126,7 +126,7 @@ DetectionLogic::PushStackViolationAlert(
 	stackViolationAlert = RCAST<PSTACK_VIOLATION_ALERT>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(STACK_VIOLATION_ALERT) + stackHistoryBytes, STACK_VIOLATION_TAG));
 	if (stackViolationAlert == NULL)
 	{
-		DBGPRINT("DetectionLogic!PushStackViolationAlert: Failed to allocate space for the alert.");
+		// DBGPRINT("DetectionLogic!PushStackViolationAlert: Failed to allocate space for the alert.");
 		return;
 	}
 	memset(stackViolationAlert, 0, sizeof(STACK_VIOLATION_ALERT) + stackHistoryBytes);
@@ -267,7 +267,7 @@ DetectionLogic::AuditCallerProcessId(
 	remoteOperationAlert = RCAST<PREMOTE_OPERATION_ALERT>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(REMOTE_OPERATION_ALERT) + stackHistoryBytes, STACK_VIOLATION_TAG));
 	if (remoteOperationAlert == NULL)
 	{
-		DBGPRINT("DetectionLogic!PushStackViolationAlert: Failed to allocate space for the alert.");
+		// DBGPRINT("DetectionLogic!PushStackViolationAlert: Failed to allocate space for the alert.");
 		return;
 	}
 	memset(remoteOperationAlert, 0, sizeof(REMOTE_OPERATION_ALERT) + stackHistoryBytes);
@@ -338,7 +338,7 @@ DetectionLogic::ReportFilterViolation (
 	//
 	if (StackHistory == NULL || StackHistorySize == 0)
 	{
-		DBGPRINT("DetectionLogic!ReportFilterViolation: StackHistory was invalid!");
+		// DBGPRINT("DetectionLogic!ReportFilterViolation: StackHistory was invalid!");
 		return;
 	}
 
@@ -353,7 +353,7 @@ DetectionLogic::ReportFilterViolation (
 	filterViolationAlert = RCAST<PFILTER_VIOLATION_ALERT>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(FILTER_VIOLATION_ALERT) + stackHistoryBytes, STACK_VIOLATION_TAG));
 	if (filterViolationAlert == NULL)
 	{
-		DBGPRINT("DetectionLogic!ReportFilterViolation: Failed to allocate space for the alert.");
+		// DBGPRINT("DetectionLogic!ReportFilterViolation: Failed to allocate space for the alert.");
 		return;
 	}
 	memset(filterViolationAlert, 0, sizeof(FILTER_VIOLATION_ALERT) + stackHistoryBytes);

@@ -176,7 +176,7 @@ VOID ThreadCreateNotifyWorkItemRoutine(
 
     if (workItem == NULL)
     {
-        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: WorkItem is NULL");
+        // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: WorkItem is NULL");
         return;
     }
 
@@ -187,14 +187,14 @@ VOID ThreadCreateNotifyWorkItemRoutine(
     // Make sure we successfully got a stack before using it
     if (threadCreateStack == NULL || threadCreateStackSize == 0)
     {
-        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to walk stack");
+        // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to walk stack");
         goto Exit;
     }
 
     // Grab the name of the caller
     if (ImageFilter::GetProcessImageFileName(workItem->CallerProcessId, &threadCallerName) == FALSE || threadCallerName == NULL)
     {
-        DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to get caller process name");
+        // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to get caller process name");
         goto Exit;
     }
 
@@ -207,7 +207,7 @@ VOID ThreadCreateNotifyWorkItemRoutine(
         // Grab the name of the target
         if (ImageFilter::GetProcessImageFileName(workItem->ProcessId, &threadTargetName) == FALSE || threadTargetName == NULL)
         {
-            DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to get target process name");
+            // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to get target process name");
             goto Exit;
         }
     }
@@ -291,12 +291,11 @@ VOID ThreadCreateNotifyWorkItemRoutine(
                 // Initialize the count and track how many entries we can store
                 targetProcessHistory->ThreadHistorySize = 0;
 
-                DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Allocated thread history array for PID %p with capacity %lu",
-                         workItem->ProcessId, initialCapacity);
+                // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Allocated thread history array for PID %p with capacity %lu", workItem->ProcessId, initialCapacity);
             }
             else
             {
-                DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to allocate thread history array");
+                // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Failed to allocate thread history array");
                 KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
                 goto Exit;
             }
@@ -320,14 +319,12 @@ VOID ThreadCreateNotifyWorkItemRoutine(
             // Increment thread history size
             targetProcessHistory->ThreadHistorySize++;
 
-            DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Added thread ID %p to history for PID %p (count: %lu)",
-                     workItem->ThreadId, workItem->ProcessId, targetProcessHistory->ThreadHistorySize);
+            // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Added thread ID %p to history for PID %p (count: %lu)", workItem->ThreadId, workItem->ProcessId, targetProcessHistory->ThreadHistorySize);
 
             // If this is a remote thread, we could log that separately
             if (threadEntry->IsRemoteThread)
             {
-                DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Remote thread %p created in process %p from process %p",
-                         workItem->ThreadId, workItem->ProcessId, workItem->CallerProcessId);
+                // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Remote thread %p created in process %p from process %p", workItem->ThreadId, workItem->ProcessId, workItem->CallerProcessId);
 
                 // Note: In the original code, this would increment TDriverClass::RemoteThreadsDetected
                 // but we're not using that here since it causes compile errors
@@ -335,14 +332,12 @@ VOID ThreadCreateNotifyWorkItemRoutine(
         }
         else
         {
-            DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Thread history array full for PID %p (size: %lu)",
-                     workItem->ProcessId, targetProcessHistory->ThreadHistorySize);
+            // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Thread history array full for PID %p (size: %lu)", workItem->ProcessId, targetProcessHistory->ThreadHistorySize);
         }
     }
     else
     {
-        // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Unable to find process history for PID %p",
-        //         workItem->ProcessId);
+        // DBGPRINT("ThreadCreateNotifyWorkItemRoutine: Unable to find process history for PID %p", workItem->ProcessId);
     }
 
     KeReleaseSpinLock(&ImageFilter::ProcessHistoryLock, ImageFilter::ProcessHistoryOldIrql);
@@ -412,7 +407,7 @@ VOID ImageLoadWorkItemRoutine(
                                                                                IMAGE_HISTORY_TAG));
         if (newImageLoadHistory == NULL)
         {
-            DBGPRINT("ImageLoadWorkItemRoutine: Failed to allocate space for image history entry.");
+            // DBGPRINT("ImageLoadWorkItemRoutine: Failed to allocate space for image history entry.");
             goto Cleanup;
         }
         memset(newImageLoadHistory, 0, sizeof(IMAGE_LOAD_HISTORY_ENTRY));
@@ -435,7 +430,7 @@ VOID ImageLoadWorkItemRoutine(
                                                                                     IMAGE_NAME_TAG));
             if (newImageLoadHistory->ImageFileName.Buffer == NULL)
             {
-                DBGPRINT("ImageLoadWorkItemRoutine: Failed to allocate space for image file name.");
+                // DBGPRINT("ImageLoadWorkItemRoutine: Failed to allocate space for image file name.");
                 goto Cleanup;
             }
 
@@ -447,7 +442,7 @@ VOID ImageLoadWorkItemRoutine(
                                                   &workItem->ImageName);
             if (NT_SUCCESS(status) == FALSE)
             {
-                DBGPRINT("ImageLoadWorkItemRoutine: Failed to copy image file name.");
+                // DBGPRINT("ImageLoadWorkItemRoutine: Failed to copy image file name.");
                 goto Cleanup;
             }
         }
@@ -559,7 +554,7 @@ ImageFilter::ImageFilter(
     tempStatus = PsSetCreateProcessNotifyRoutineEx(ImageFilter::CreateProcessNotifyRoutine, FALSE);
     if (NT_SUCCESS(tempStatus) == FALSE)
     {
-        DBGPRINT("ImageFilter!ImageFilter: Failed to register create process notify routine with status 0x%X.", tempStatus);
+        // DBGPRINT("ImageFilter!ImageFilter: Failed to register create process notify routine with status 0x%X.", tempStatus);
         *InitializeStatus = tempStatus;
         return;
     }
@@ -569,7 +564,7 @@ ImageFilter::ImageFilter(
     tempStatus = PsSetLoadImageNotifyRoutine(ImageFilter::LoadImageNotifyRoutine);
     if (NT_SUCCESS(tempStatus) == FALSE)
     {
-        DBGPRINT("ImageFilter!ImageFilter: Failed to register load image notify routine with status 0x%X.", tempStatus);
+        // DBGPRINT("ImageFilter!ImageFilter: Failed to register load image notify routine with status 0x%X.", tempStatus);
         *InitializeStatus = tempStatus;
         return;
     }
@@ -581,7 +576,7 @@ ImageFilter::ImageFilter(
     ImageFilter::ProcessHistory = RCAST<PPROCESS_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(PROCESS_HISTORY_ENTRY) * 100, PROCESS_HISTORY_TAG));
     if (ImageFilter::ProcessHistory == NULL)
     {
-        DBGPRINT("ImageFilter!ImageFilter: Failed to allocate the process history array.");
+        // DBGPRINT("ImageFilter!ImageFilter: Failed to allocate the process history array.");
         *InitializeStatus = STATUS_NO_MEMORY;
         return;
     }
@@ -608,7 +603,7 @@ ImageFilter::ImageFilter(
     tempStatus = PsSetCreateThreadNotifyRoutine(ImageFilter::ThreadNotifyRoutine);
     if (NT_SUCCESS(tempStatus) == FALSE)
     {
-        DBGPRINT("ImageFilter!ImageFilter: Failed to create thread notify routine with status 0x%X.", tempStatus);
+        // DBGPRINT("ImageFilter!ImageFilter: Failed to create thread notify routine with status 0x%X.", tempStatus);
         *InitializeStatus = tempStatus;
         return;
     }
@@ -627,7 +622,7 @@ ImageFilter::~ImageFilter(
     PPROCESS_HISTORY_ENTRY currentProcessHistory;
     PIMAGE_LOAD_HISTORY_ENTRY currentImageEntry = NULL;
 
-    DBGPRINT("ImageFilter!~ImageFilter: Starting destructor");
+    // DBGPRINT("ImageFilter!~ImageFilter: Starting destructor");
 
     //
     // Set destroying to TRUE so that no other threads can get a lock.
@@ -641,7 +636,7 @@ ImageFilter::~ImageFilter(
     PsRemoveLoadImageNotifyRoutine(ImageFilter::LoadImageNotifyRoutine);
     PsRemoveCreateThreadNotifyRoutine(ImageFilter::ThreadNotifyRoutine);
 
-    DBGPRINT("ImageFilter!~ImageFilter: Removed all notify routines");
+    // DBGPRINT("ImageFilter!~ImageFilter: Removed all notify routines");
 
     //
     // Acquire an exclusive lock to push out other threads.
@@ -661,21 +656,20 @@ ImageFilter::~ImageFilter(
     //
     if (ImageFilter::ProcessHistory)
     {
-        DBGPRINT("ImageFilter!~ImageFilter: Cleaning up %llu process history entries", ImageFilter::ProcessHistorySize);
+        // DBGPRINT("ImageFilter!~ImageFilter: Cleaning up %llu process history entries", ImageFilter::ProcessHistorySize);
 
         // Iterate through all the used entries in the array
         for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
         {
             currentProcessHistory = &ImageFilter::ProcessHistory[i];
-            DBGPRINT("ImageFilter!~ImageFilter: Cleaning entry %llu for PID %p", i, currentProcessHistory->ProcessId);
+            // DBGPRINT("ImageFilter!~ImageFilter: Cleaning entry %llu for PID %p", i, currentProcessHistory->ProcessId);
 
             //
             // Clear the images linked-list.
             //
             if (currentProcessHistory->ImageLoadHistory)
             {
-                DBGPRINT("ImageFilter!~ImageFilter: Cleaning image load history for PID %p, size %lu",
-                         currentProcessHistory->ProcessId, currentProcessHistory->ImageLoadHistorySize);
+                // DBGPRINT("ImageFilter!~ImageFilter: Cleaning image load history for PID %p, size %lu", currentProcessHistory->ProcessId, currentProcessHistory->ImageLoadHistorySize);
 
                 while (IsListEmpty(RCAST<PLIST_ENTRY>(currentProcessHistory->ImageLoadHistory)) == FALSE)
                 {
@@ -716,8 +710,7 @@ ImageFilter::~ImageFilter(
             //
             if (currentProcessHistory->ThreadHistory)
             {
-                DBGPRINT("ImageFilter!~ImageFilter: Cleaning thread history for PID %p, size %lu",
-                         currentProcessHistory->ProcessId, currentProcessHistory->ThreadHistorySize);
+                // DBGPRINT("ImageFilter!~ImageFilter: Cleaning thread history for PID %p, size %lu", currentProcessHistory->ProcessId, currentProcessHistory->ThreadHistorySize);
 
                 ExFreePoolWithTag(currentProcessHistory->ThreadHistory, 'ThHI'); // Using a tag that matches allocation
             }
@@ -759,11 +752,11 @@ ImageFilter::~ImageFilter(
         //
         // Finally, free the entire array at once.
         //
-        DBGPRINT("ImageFilter!~ImageFilter: Freeing the entire process history array");
+        // DBGPRINT("ImageFilter!~ImageFilter: Freeing the entire process history array");
         ExFreePoolWithTag(ImageFilter::ProcessHistory, PROCESS_HISTORY_TAG);
     }
 
-    DBGPRINT("ImageFilter!~ImageFilter: Destructor completed");
+    // DBGPRINT("ImageFilter!~ImageFilter: Destructor completed");
 }
 
 /**
@@ -815,7 +808,7 @@ VOID ImageFilter::AddProcessToHistory(
     // Check if we have room in the array
     if (ImageFilter::ProcessHistorySize >= 100)
     {
-        DBGPRINT("ImageFilter!AddProcessToHistory: Process history array is full.");
+        // DBGPRINT("ImageFilter!AddProcessToHistory: Process history array is full.");
         ReleaseProcessLock();
         status = STATUS_NO_MEMORY;
         goto Exit;
@@ -831,8 +824,7 @@ VOID ImageFilter::AddProcessToHistory(
     ReleaseProcessLock();
 
     // Add debug output to track the process being added
-    DBGPRINT("ImageFilter!AddProcessToHistory: Adding PID %p to history index %llu",
-             ProcessId, newIndex);
+    // DBGPRINT("ImageFilter!AddProcessToHistory: Adding PID %p to history index %llu", ProcessId, newIndex);
 
     memset(newProcessHistory, 0, sizeof(PROCESS_HISTORY_ENTRY));
 
@@ -862,7 +854,7 @@ VOID ImageFilter::AddProcessToHistory(
     newProcessHistory->ProcessImageFileName = RCAST<PUNICODE_STRING>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(UNICODE_STRING) + CreateInfo->ImageFileName->Length, IMAGE_NAME_TAG));
     if (newProcessHistory->ProcessImageFileName == NULL)
     {
-        DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for process ImageFileName.");
+        // DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for process ImageFileName.");
         goto Increment; // Still increment the count even if we couldn't fully populate
     }
 
@@ -883,7 +875,7 @@ VOID ImageFilter::AddProcessToHistory(
         newProcessHistory->ProcessCommandLine = RCAST<PUNICODE_STRING>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(UNICODE_STRING) + CreateInfo->CommandLine->Length, IMAGE_COMMMAND_TAG));
         if (newProcessHistory->ProcessCommandLine == NULL)
         {
-            DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for process command line.");
+            // DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for process command line.");
             goto Increment; // Still increment the count even if we couldn't fully populate
         }
 
@@ -914,7 +906,7 @@ VOID ImageFilter::AddProcessToHistory(
     // We'll continue even if stack walk fails - just log it
     if (newProcessHistory->CallerStackHistory == NULL)
     {
-        DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for the stack history - continuing without stack info.");
+        // DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for the stack history - continuing without stack info.");
         // Set a default small size
         newProcessHistory->CallerStackHistorySize = 0;
     }
@@ -922,7 +914,7 @@ VOID ImageFilter::AddProcessToHistory(
     newProcessHistory->ImageLoadHistory = RCAST<PIMAGE_LOAD_HISTORY_ENTRY>(ExAllocatePool2(POOL_FLAG_PAGED, sizeof(IMAGE_LOAD_HISTORY_ENTRY), IMAGE_HISTORY_TAG));
     if (newProcessHistory->ImageLoadHistory == NULL)
     {
-        DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for the image load history.");
+        // DBGPRINT("ImageFilter!AddProcessToHistory: Failed to allocate space for the image load history.");
         status = STATUS_NO_MEMORY;
         goto Increment; // Still increment the count even if we couldn't fully populate
     }
@@ -961,13 +953,11 @@ Increment:
     if (ImageFilter::ProcessHistorySize == newIndex)
     {
         ImageFilter::ProcessHistorySize++;
-        DBGPRINT("ImageFilter!AddProcessToHistory: Incremented ProcessHistorySize to %llu",
-                 ImageFilter::ProcessHistorySize);
+        // DBGPRINT("ImageFilter!AddProcessToHistory: Incremented ProcessHistorySize to %llu", ImageFilter::ProcessHistorySize);
     }
     else
     {
-        DBGPRINT("ImageFilter!AddProcessToHistory: Size changed during processing! Expected %llu, current %llu",
-                 newIndex, ImageFilter::ProcessHistorySize);
+        // DBGPRINT("ImageFilter!AddProcessToHistory: Size changed during processing! Expected %llu, current %llu", newIndex, ImageFilter::ProcessHistorySize);
     }
     ReleaseProcessLock();
 
@@ -1060,8 +1050,8 @@ VOID ImageFilter::CreateProcessNotifyRoutine(
     // Add extensive debug logging
     if (CreateInfo)
     {
-        DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: New process %p being created", ProcessId);
-        DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Parent PID=%p", CreateInfo->ParentProcessId);
+        // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: New process %p being created", ProcessId);
+        // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Parent PID=%p", CreateInfo->ParentProcessId);
 
         if (CreateInfo->ImageFileName)
         {
@@ -1076,28 +1066,26 @@ VOID ImageFilter::CreateProcessNotifyRoutine(
                 RtlCopyMemory(tempBuffer, CreateInfo->ImageFileName->Buffer, len * sizeof(WCHAR));
                 tempBuffer[len] = L'\0';
 
-                DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Image=%ws", tempBuffer);
+                // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Image=%ws", tempBuffer);
 
                 ExFreePoolWithTag(tempBuffer, 'tImP');
             }
         }
 
-        DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Before adding to history, current count=%llu",
-                 ImageFilter::ProcessHistorySize);
+        // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Before adding to history, current count=%llu", ImageFilter::ProcessHistorySize);
 
         //
         // Add process to our tracking history
         //
         ImageFilter::AddProcessToHistory(ProcessId, CreateInfo);
 
-        DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: After adding to history, new count=%llu",
-                 ImageFilter::ProcessHistorySize);
+        // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: After adding to history, new count=%llu", ImageFilter::ProcessHistorySize);
 
-        DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Successfully registered process %p.", ProcessId);
+        // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Successfully registered process %p.", ProcessId);
     }
     else
     {
-        DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Terminating process %p.", ProcessId);
+        // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Terminating process %p.", ProcessId);
         //
         // Set the process as "terminated".
         //
@@ -1105,8 +1093,7 @@ VOID ImageFilter::CreateProcessNotifyRoutine(
     }
 
     // Log current count after all processing
-    DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Final process history size=%llu",
-             ImageFilter::ProcessHistorySize);
+    // DBGPRINT("ImageFilter!CreateProcessNotifyRoutine: Final process history size=%llu", ImageFilter::ProcessHistorySize);
 }
 
 /**
@@ -1326,8 +1313,7 @@ ImageFilter::GetImageLoadHistory(
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-        DbgPrint("ImageFilter!GetImageLoadHistory: Exception during collection: 0x%X",
-                 GetExceptionCode());
+        // DbgPrint("ImageFilter!GetImageLoadHistory: Exception during collection: 0x%X", GetExceptionCode());
     }
 
     // Release the lock
@@ -1373,7 +1359,7 @@ ImageFilter::GetProcessImageFileName(
     status = PsLookupProcessByProcessId(ProcessId, &processObject);
     if (NT_SUCCESS(status) == FALSE)
     {
-        DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to find process object with status 0x%X.", status);
+        // DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to find process object with status 0x%X.", status);
         goto Exit;
     }
 
@@ -1383,7 +1369,7 @@ ImageFilter::GetProcessImageFileName(
     status = ObOpenObjectByPointer(processObject, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, GENERIC_ALL, *PsProcessType, KernelMode, &processHandle);
     if (NT_SUCCESS(status) == FALSE)
     {
-        DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to open handle to process with status 0x%X.", status);
+        // DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to open handle to process with status 0x%X.", status);
         goto Exit;
     }
 
@@ -1393,7 +1379,7 @@ ImageFilter::GetProcessImageFileName(
     status = NtQueryInformationProcess(processHandle, ProcessImageFileName, NULL, 0, &returnLength);
     if (status != STATUS_INFO_LENGTH_MISMATCH && status != STATUS_BUFFER_TOO_SMALL && status != STATUS_BUFFER_OVERFLOW)
     {
-        DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to query size of process ImageFileName with status 0x%X.", status);
+        // DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to query size of process ImageFileName with status 0x%X.", status);
         goto Exit;
     }
 
@@ -1403,7 +1389,7 @@ ImageFilter::GetProcessImageFileName(
     *ImageFileName = RCAST<PUNICODE_STRING>(ExAllocatePool2(POOL_FLAG_PAGED, returnLength, IMAGE_NAME_TAG));
     if (*ImageFileName == NULL)
     {
-        DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to allocate space for process ImageFileName.");
+        // DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to allocate space for process ImageFileName.");
         goto Exit;
     }
 
@@ -1413,7 +1399,7 @@ ImageFilter::GetProcessImageFileName(
     status = NtQueryInformationProcess(processHandle, ProcessImageFileName, *ImageFileName, returnLength, &returnLength);
     if (NT_SUCCESS(status) == FALSE)
     {
-        DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to query process ImageFileName with status 0x%X.", status);
+        // DBGPRINT("ImageFilter!GetProcessImageFileName: Failed to query process ImageFileName with status 0x%X.", status);
         goto Exit;
     }
 Exit:
@@ -1472,7 +1458,7 @@ VOID ImageFilter::LoadImageNotifyRoutine(
     // If we're at high IRQL, skip everything
     if (KeGetCurrentIrql() > PASSIVE_LEVEL)
     {
-        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
+        // DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
         return;
     }
 
@@ -1490,7 +1476,7 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 
     if (workItem == NULL)
     {
-        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate work item");
+        // DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to allocate work item");
         return;
     }
 
@@ -1539,7 +1525,7 @@ VOID ImageFilter::LoadImageNotifyRoutine(
 
     if (!NT_SUCCESS(status))
     {
-        DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to create system thread with status 0x%X", status);
+        // DBGPRINT("ImageFilter!LoadImageNotifyRoutine: Failed to create system thread with status 0x%X", status);
 
         // Free resources
         if (workItem->ImageName.Buffer != NULL)
@@ -1592,22 +1578,21 @@ ImageFilter::GetProcessHistorySummary(
     NTSTATUS status;
 
     // Add debug logging
-    DBGPRINT("ImageFilter!GetProcessHistorySummary: Called with SkipCount=%lu, MaxProcessSummaries=%lu",
-             SkipCount, MaxProcessSummaries);
+    // DBGPRINT("ImageFilter!GetProcessHistorySummary: Called with SkipCount=%lu, MaxProcessSummaries=%lu", SkipCount, MaxProcessSummaries);
 
     currentProcessIndex = 0;
     actualFilledSummaries = 0;
 
     if (ImageFilter::destroying)
     {
-        DBGPRINT("ImageFilter!GetProcessHistorySummary: ImageFilter is being destroyed, returning 0");
+        // DBGPRINT("ImageFilter!GetProcessHistorySummary: ImageFilter is being destroyed, returning 0");
         return 0;
     }
 
     // Validate input parameters
     if (ProcessSummaries == NULL || MaxProcessSummaries == 0)
     {
-        DBGPRINT("ImageFilter!GetProcessHistorySummary: Invalid parameters, returning 0");
+        // DBGPRINT("ImageFilter!GetProcessHistorySummary: Invalid parameters, returning 0");
         return 0;
     }
 
@@ -1615,18 +1600,13 @@ ImageFilter::GetProcessHistorySummary(
     AcquireProcessLock();
 
     // Log current state
-    DBGPRINT("ImageFilter!GetProcessHistorySummary: Current ProcessHistorySize=%llu",
-             ImageFilter::ProcessHistorySize);
+    // DBGPRINT("ImageFilter!GetProcessHistorySummary: Current ProcessHistorySize=%llu", ImageFilter::ProcessHistorySize);
 
     // Debug log: Print summary of all process entries
-    DBGPRINT("ImageFilter!GetProcessHistorySummary: Summary of all process entries:");
+    // DBGPRINT("ImageFilter!GetProcessHistorySummary: Summary of all process entries:");
     for (ULONG64 i = 0; i < ImageFilter::ProcessHistorySize; i++)
     {
-        DBGPRINT("  Process[%llu]: PID=%p, Terminated=%d, ImageFileName=%p",
-                 i,
-                 ImageFilter::ProcessHistory[i].ProcessId,
-                 ImageFilter::ProcessHistory[i].ProcessTerminated,
-                 ImageFilter::ProcessHistory[i].ProcessImageFileName);
+        // DBGPRINT("  Process[%llu]: PID=%p, Terminated=%d, ImageFileName=%p", i, ImageFilter::ProcessHistory[i].ProcessId, ImageFilter::ProcessHistory[i].ProcessTerminated, ImageFilter::ProcessHistory[i].ProcessImageFileName);
     }
 
     // Iterate histories for the MaxProcessSummaries processes after SkipCount processes
@@ -1640,8 +1620,7 @@ ImageFilter::GetProcessHistorySummary(
             currentProcessHistory = &ImageFilter::ProcessHistory[processIndex]; // FIXED: Using processIndex instead of i
 
             // Debug each process entry being considered
-            DBGPRINT("ImageFilter!GetProcessHistorySummary: Considering [%llu] PID=%p, Terminated=%d",
-                     processIndex, currentProcessHistory->ProcessId, currentProcessHistory->ProcessTerminated);
+            // DBGPRINT("ImageFilter!GetProcessHistorySummary: Considering [%llu] PID=%p, Terminated=%d", processIndex, currentProcessHistory->ProcessId, currentProcessHistory->ProcessTerminated);
 
             // Check if we need to skip this process based on SkipCount
             if (currentProcessIndex >= SkipCount)
@@ -1661,8 +1640,7 @@ ImageFilter::GetProcessHistorySummary(
                     if (currentProcessHistory->ProcessImageFileName)
                     {
                         // Copy the image name
-                        DBGPRINT("ImageFilter!GetProcessHistorySummary: Copying image name for entry %lu",
-                                 actualFilledSummaries);
+                        // DBGPRINT("ImageFilter!GetProcessHistorySummary: Copying image name for entry %lu", actualFilledSummaries);
 
                         // Check if the ProcessImageFileName is valid
                         if (currentProcessHistory->ProcessImageFileName->Buffer != NULL &&
@@ -1676,58 +1654,51 @@ ImageFilter::GetProcessHistorySummary(
 
                             if (NT_SUCCESS(status) == FALSE)
                             {
-                                DBGPRINT("ImageFilter!GetProcessHistorySummary: Failed to copy the image file name with status 0x%X.",
-                                         status);
+                                // DBGPRINT("ImageFilter!GetProcessHistorySummary: Failed to copy the image file name with status 0x%X.",status);
                                 // Continue anyway - we'll have a process with an empty name
                             }
                             else
                             {
-                                DBGPRINT("ImageFilter!GetProcessHistorySummary: Image name copied: %ws",
-                                         ProcessSummaries[actualFilledSummaries].ImageFileName);
+                                // DBGPRINT("ImageFilter!GetProcessHistorySummary: Image name copied: %ws", ProcessSummaries[actualFilledSummaries].ImageFileName);
                             }
                         }
                         else
                         {
-                            DBGPRINT("ImageFilter!GetProcessHistorySummary: Invalid ProcessImageFileName for PID %p",
-                                     currentProcessHistory->ProcessId);
+                            // DBGPRINT("ImageFilter!GetProcessHistorySummary: Invalid ProcessImageFileName for PID %p", currentProcessHistory->ProcessId);
                             // Set a default name
                             wcscpy_s(ProcessSummaries[actualFilledSummaries].ImageFileName, MAX_PATH, L"[Unknown Process]");
                         }
                     }
                     else
                     {
-                        DBGPRINT("ImageFilter!GetProcessHistorySummary: ProcessImageFileName is NULL for PID %p",
-                                 currentProcessHistory->ProcessId);
+                        // DBGPRINT("ImageFilter!GetProcessHistorySummary: ProcessImageFileName is NULL for PID %p", currentProcessHistory->ProcessId);
                         // Set a default name
                         wcscpy_s(ProcessSummaries[actualFilledSummaries].ImageFileName, MAX_PATH, L"[Unknown Process]");
                     }
 
                     actualFilledSummaries++;
-                    DBGPRINT("ImageFilter!GetProcessHistorySummary: Added entry %lu, now have %lu entries",
-                             actualFilledSummaries - 1, actualFilledSummaries);
+                    // DBGPRINT("ImageFilter!GetProcessHistorySummary: Added entry %lu, now have %lu entries", actualFilledSummaries - 1, actualFilledSummaries);
                 }
             }
             else
             {
                 skippedDueToCount++;
-                DBGPRINT("ImageFilter!GetProcessHistorySummary: Skipped process %p due to SkipCount (%lu)",
-                         currentProcessHistory->ProcessId, SkipCount);
+                // DBGPRINT("ImageFilter!GetProcessHistorySummary: Skipped process %p due to SkipCount (%lu)", currentProcessHistory->ProcessId, SkipCount);
             }
             currentProcessIndex++;
         }
 
-        DBGPRINT("ImageFilter!GetProcessHistorySummary: Processes skipped due to SkipCount: %lu",
-                 skippedDueToCount);
+        // DBGPRINT("ImageFilter!GetProcessHistorySummary: Processes skipped due to SkipCount: %lu", skippedDueToCount);
     }
     else
     {
-        DBGPRINT("ImageFilter!GetProcessHistorySummary: ProcessHistory is NULL");
+        // DBGPRINT("ImageFilter!GetProcessHistorySummary: ProcessHistory is NULL");
     }
 
     // Release the lock
     ReleaseProcessLock();
 
-    DBGPRINT("ImageFilter!GetProcessHistorySummary: Returning %lu process summaries", actualFilledSummaries);
+    // DBGPRINT("ImageFilter!GetProcessHistorySummary: Returning %lu process summaries", actualFilledSummaries);
     return actualFilledSummaries;
 }
 
@@ -1811,7 +1782,7 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
                     status = RtlStringCbCopyUnicodeString(RCAST<NTSTRSAFE_PWSTR>(ProcessDetailedRequest->ProcessPath), MAX_PATH * sizeof(WCHAR), currentProcessHistory->ProcessImageFileName);
                     if (NT_SUCCESS(status) == FALSE)
                     {
-                        DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of the process with status 0x%X.", status);
+                        // DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of the process with status 0x%X.", status);
                         break;
                     }
                 }
@@ -1820,7 +1791,7 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
                     status = RtlStringCbCopyUnicodeString(RCAST<NTSTRSAFE_PWSTR>(ProcessDetailedRequest->CallerProcessPath), MAX_PATH * sizeof(WCHAR), currentProcessHistory->CallerImageFileName);
                     if (NT_SUCCESS(status) == FALSE)
                     {
-                        DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of the caller with status 0x%X.", status);
+                        // DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of the caller with status 0x%X.", status);
                         break;
                     }
                 }
@@ -1829,7 +1800,7 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
                     status = RtlStringCbCopyUnicodeString(RCAST<NTSTRSAFE_PWSTR>(ProcessDetailedRequest->ParentProcessPath), MAX_PATH * sizeof(WCHAR), currentProcessHistory->ParentImageFileName);
                     if (NT_SUCCESS(status) == FALSE)
                     {
-                        DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of the parent with status 0x%X.", status);
+                        // DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of the parent with status 0x%X.", status);
                         break;
                     }
                 }
@@ -1838,7 +1809,7 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
                     status = RtlStringCbCopyUnicodeString(RCAST<NTSTRSAFE_PWSTR>(ProcessDetailedRequest->ProcessCommandLine), MAX_PATH * sizeof(WCHAR), currentProcessHistory->ProcessCommandLine);
                     if (NT_SUCCESS(status) == FALSE)
                     {
-                        DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the command line of the process with status 0x%X.", status);
+                        // DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the command line of the process with status 0x%X.", status);
                         break;
                     }
                 }
@@ -1862,7 +1833,7 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
                             status = RtlStringCbCopyUnicodeString(RCAST<NTSTRSAFE_PWSTR>(ProcessDetailedRequest->ImageSummary[i].ImagePath), MAX_PATH * sizeof(WCHAR), &currentImageEntry->ImageFileName);
                             if (NT_SUCCESS(status) == FALSE)
                             {
-                                DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of an image with status 0x%X and source size %i.", status, currentImageEntry->ImageFileName.Length);
+                                // DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Failed to copy the image file name of an image with status 0x%X and source size %i.", status, currentImageEntry->ImageFileName.Length);
                                 break;
                             }
                         }
@@ -1870,7 +1841,7 @@ VOID ImageFilter::PopulateProcessDetailedRequest(
                     }
                     __except (1)
                     {
-                        DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Exception while processing image summaries.");
+                        // DBGPRINT("ImageFilter!PopulateProcessDetailedRequest: Exception while processing image summaries.");
                         break;
                     }
 
@@ -2017,8 +1988,7 @@ ImageFilter::GetThreadCreationHistory(
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-        DbgPrint("ImageFilter!GetThreadCreationHistory: Exception during collection: 0x%X",
-                 GetExceptionCode());
+        // DbgPrint("ImageFilter!GetThreadCreationHistory: Exception during collection: 0x%X", GetExceptionCode());
     }
 
     // Release the lock
@@ -2061,7 +2031,7 @@ ImageFilter::GetThreadStartAddress(
     status = ObOpenObjectByPointer(threadObject, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, GENERIC_ALL, *PsThreadType, KernelMode, &threadHandle);
     if (NT_SUCCESS(status) == FALSE)
     {
-        DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to open handle to process with status 0x%X.", status);
+        // DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to open handle to process with status 0x%X.", status);
         goto Exit;
     }
 
@@ -2071,7 +2041,7 @@ ImageFilter::GetThreadStartAddress(
     status = NtQueryInformationThread(threadHandle, ThreadQuerySetWin32StartAddress, &startAddress, sizeof(startAddress), &returnLength);
     if (NT_SUCCESS(status) == FALSE)
     {
-        DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to query thread start address with status 0x%X.", status);
+        // DBGPRINT("ImageFilter!GetThreadStartAddress: Failed to query thread start address with status 0x%X.", status);
         goto Exit;
     }
 Exit:
@@ -2096,7 +2066,7 @@ VOID ImageFilter::ThreadNotifyRoutine(
     // Skip at high IRQL
     if (KeGetCurrentIrql() > PASSIVE_LEVEL)
     {
-        DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
+        // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
         return;
     }
 
@@ -2120,8 +2090,7 @@ VOID ImageFilter::ThreadNotifyRoutine(
     // but we're not using that here since it causes compile errors
 
     // DEBUG: Log thread creation
-    // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Thread %p created in process %p (thread count: %lu)",
-    //         ThreadId, ProcessId, processThreadCount);
+    // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Thread %p created in process %p (thread count: %lu)", ThreadId, ProcessId, processThreadCount);
 
     // Create a work item to process at PASSIVE_LEVEL
     PTHREAD_CREATE_NOTIFY_WORKITEM workItem = (PTHREAD_CREATE_NOTIFY_WORKITEM)ExAllocatePool2(
@@ -2131,7 +2100,7 @@ VOID ImageFilter::ThreadNotifyRoutine(
 
     if (workItem == NULL)
     {
-        DBGPRINT("ImageFilter!ThreadNotifyRoutine: Failed to allocate work item");
+        // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Failed to allocate work item");
         return;
     }
 
@@ -2148,8 +2117,7 @@ VOID ImageFilter::ThreadNotifyRoutine(
     // Queue the work item to process this notification at PASSIVE_LEVEL
     ExQueueWorkItem(&workItem->WorkItem, DelayedWorkQueue);
 
-    // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Queued work item for thread ID %p in process %p",
-    //         ThreadId, ProcessId);
+    // DBGPRINT("ImageFilter!ThreadNotifyRoutine: Queued work item for thread ID %p in process %p", ThreadId, ProcessId);
 }
 
 /**
@@ -2182,7 +2150,7 @@ ImageFilter::AddProcessThreadCount(
     // Check IRQL - we shouldn't do this at high IRQLs
     if (KeGetCurrentIrql() > PASSIVE_LEVEL)
     {
-        DBGPRINT("ImageFilter!AddProcessThreadCount: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
+        // DBGPRINT("ImageFilter!AddProcessThreadCount: Skipping due to high IRQL (%d)", KeGetCurrentIrql());
         return FALSE; // Skip at high IRQL
     }
 
@@ -2336,7 +2304,7 @@ VOID ImageFilter::PopulateImageDetailedRequest(
                             status = RtlStringCbCopyUnicodeString(RCAST<NTSTRSAFE_PWSTR>(ImageDetailedRequest->ImagePath), MAX_PATH * sizeof(WCHAR), &currentImageEntry->ImageFileName);
                             if (NT_SUCCESS(status) == FALSE)
                             {
-                                DBGPRINT("ImageFilter!PopulateImageDetailedRequest: Failed to copy the image file name of an image with status 0x%X and source size %i.", status, currentImageEntry->ImageFileName.Length);
+                                // DBGPRINT("ImageFilter!PopulateImageDetailedRequest: Failed to copy the image file name of an image with status 0x%X and source size %i.", status, currentImageEntry->ImageFileName.Length);
                                 break;
                             }
                         }

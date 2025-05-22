@@ -9,14 +9,14 @@ inline PFAST_MUTEX IOCTLConvertToFastMutex(ULONG_PTR ptr)
     // Validasi range alamat kernel (batas atas)
     if (ptr < 0xFFFF800000000000)
     {
-        DbgPrint("[IOCTL] INVALID POINTER CONVERSION: %p is not a valid kernel address", (PVOID)ptr);
+        // DbgPrint("[IOCTL] INVALID POINTER CONVERSION: %p is not a valid kernel address", (PVOID)ptr);
         return NULL;
     }
 
     // Validasi pointer tidak NULL
     if (ptr == 0)
     {
-        DbgPrint("[IOCTL] NULL POINTER CONVERSION");
+        // DbgPrint("[IOCTL] NULL POINTER CONVERSION");
         return NULL;
     }
 
@@ -108,18 +108,15 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
     PPROCESS_SUMMARY_ENTRY processSummaries = NULL;
 
     // Add detailed debug logging
-    DbgPrint("[IOCTL] HandleGetProcessList called, outputBufferLength=%lu", outputBufferLength);
+    // DbgPrint("[IOCTL] HandleGetProcessList called, outputBufferLength=%lu", outputBufferLength);
 
     // Get the overall stats to compare
-    DbgPrint("[IOCTL] Stats: TotalProcessesMonitored=%lu, ActiveProcesses=%lu",
-             TDriverClass::TotalProcessesMonitored,
-             TDriverClass::ActiveProcesses);
+    // DbgPrint("[IOCTL] Stats: TotalProcessesMonitored=%lu, ActiveProcesses=%lu", TDriverClass::TotalProcessesMonitored, TDriverClass::ActiveProcesses);
 
     // Log ProcessHistorySize if available
     if (TDriverClass::GetImageProcessFilter() != NULL)
     {
-        DbgPrint("[IOCTL] ImageProcessFilter->ProcessHistorySize=%llu",
-                 TDriverClass::GetImageProcessFilter()->ProcessHistorySize);
+        // DbgPrint("[IOCTL] ImageProcessFilter->ProcessHistorySize=%llu", TDriverClass::GetImageProcessFilter()->ProcessHistorySize);
     }
 
     // Calculate max processes correctly
@@ -135,15 +132,14 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
         // Always make sure we can at least return one process
         maxProcesses = max(1, maxProcesses);
 
-        DbgPrint("[IOCTL] Output buffer can hold up to %lu processes (sizeof(PROCESS_INFO)=%lu bytes)",
-                 maxProcesses, (ULONG)sizeof(PROCESS_INFO));
+        // DbgPrint("[IOCTL] Output buffer can hold up to %lu processes (sizeof(PROCESS_INFO)=%lu bytes)", maxProcesses, (ULONG)sizeof(PROCESS_INFO));
     }
 
     // Initialize the count to 0, will be updated as we fill the list
     PPROCESS_LIST pList = (PPROCESS_LIST)outputBuffer;
     if (pList == NULL)
     {
-        DbgPrint("[IOCTL] Output buffer is NULL");
+        // DbgPrint("[IOCTL] Output buffer is NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -153,7 +149,7 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
     // Check if ImageProcessFilter is initialized
     if (TDriverClass::GetImageProcessFilter() == NULL)
     {
-        DbgPrint("[IOCTL] ImageProcessFilter is not initialized");
+        // DbgPrint("[IOCTL] ImageProcessFilter is not initialized");
         pList->Count = 0;
         bytesReturned = sizeof(PROCESS_LIST);
         status = STATUS_SUCCESS; // Return empty list instead of failing
@@ -169,14 +165,14 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
 
         if (processSummaries == NULL)
         {
-            DbgPrint("[IOCTL] Failed to allocate memory for process summaries");
+            // DbgPrint("[IOCTL] Failed to allocate memory for process summaries");
             status = STATUS_INSUFFICIENT_RESOURCES;
             goto Exit;
         }
 
         RtlZeroMemory(processSummaries, maxProcesses * sizeof(PROCESS_SUMMARY_ENTRY));
 
-        DbgPrint("[IOCTL] Calling GetProcessHistorySummary with maxProcesses=%lu", maxProcesses);
+        // DbgPrint("[IOCTL] Calling GetProcessHistorySummary with maxProcesses=%lu", maxProcesses);
 
         // Get the process summaries with proper error handling
         ULONG actualCount = 0;
@@ -189,17 +185,16 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
                 maxProcesses      // Maximum processes to return
             );
 
-            DbgPrint("[IOCTL] GetProcessHistorySummary returned %lu entries", actualCount);
+            // DbgPrint("[IOCTL] GetProcessHistorySummary returned %lu entries", actualCount);
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-            DbgPrint("[IOCTL] Exception occurred while getting process history summaries: 0x%X",
-                     GetExceptionCode());
+            // DbgPrint("[IOCTL] Exception occurred while getting process history summaries: 0x%X", GetExceptionCode());
             actualCount = 0; // Reset count on exception
         }
 
         // Convert PROCESS_SUMMARY_ENTRY to PROCESS_INFO
-        DbgPrint("[IOCTL] Converting %lu summaries to PROCESS_INFO format", actualCount);
+        // DbgPrint("[IOCTL] Converting %lu summaries to PROCESS_INFO format", actualCount);
 
         // Get the process filter for direct access to process history
         PIMAGE_PROCESS_FILTER filter = TDriverClass::GetImageProcessFilter();
@@ -248,10 +243,7 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
                 systemTime.QuadPart = (epochSeconds + 11644473600ULL) * 10000000ULL;
                 pList->Processes[i].CreationTime = systemTime;
 
-                DbgPrint("[IOCTL] Process %lu: PID=%lu, PPID=%lu, Epoch=%llu",
-                         i, pList->Processes[i].ProcessId,
-                         pList->Processes[i].ParentProcessId,
-                         originalEntry->EpochExecutionTime);
+                // DbgPrint("[IOCTL] Process %lu: PID=%lu, PPID=%lu, Epoch=%llu", i, pList->Processes[i].ProcessId, pList->Processes[i].ParentProcessId, originalEntry->EpochExecutionTime);
             }
             else
             {
@@ -259,8 +251,7 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
                 pList->Processes[i].ParentProcessId = 0;
                 pList->Processes[i].CreationTime.QuadPart = 0;
 
-                DbgPrint("[IOCTL] Process %lu: PID=%lu, couldn't find original entry",
-                         i, pList->Processes[i].ProcessId);
+                // DbgPrint("[IOCTL] Process %lu: PID=%lu, couldn't find original entry", i, pList->Processes[i].ProcessId);
             }
 
             // Clear UserName field since we're not using it
@@ -271,8 +262,7 @@ NTSTATUS HandleGetProcessList(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpSp)
         bytesReturned = sizeof(PROCESS_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(PROCESS_INFO) : 0);
     }
 
-    DbgPrint("[IOCTL] Final result: returned %lu processes, bytesReturned=%lu",
-             pList->Count, bytesReturned);
+    // DbgPrint("[IOCTL] Final result: returned %lu processes, bytesReturned=%lu", pList->Count, bytesReturned);
 
 Exit:
     // Clean up allocated memory if needed
@@ -283,7 +273,7 @@ Exit:
 
     // Set the bytes returned
     Irp->IoStatus.Information = bytesReturned;
-    DbgPrint("[IOCTL] HandleGetProcessList completed with status 0x%X", status);
+    // DbgPrint("[IOCTL] HandleGetProcessList completed with status 0x%X", status);
     return status;
 }
 
@@ -306,7 +296,7 @@ HandleGetProcessDetails(
     // Check input parameters
     if (inputBufferLength < sizeof(PROCESS_DETAILS_REQUEST))
     {
-        DbgPrint("[IOCTL] Invalid input buffer size for process details request");
+        // DbgPrint("[IOCTL] Invalid input buffer size for process details request");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -314,12 +304,12 @@ HandleGetProcessDetails(
     // Get the process ID from the input
     PPROCESS_DETAILS_REQUEST pRequest = (PPROCESS_DETAILS_REQUEST)inputBuffer;
     ULONG processId = pRequest->ProcessId;
-    DbgPrint("[IOCTL] GetProcessDetails for PID %lu", processId);
+    // DbgPrint("[IOCTL] GetProcessDetails for PID %lu", processId);
 
     // First check if the output buffer is large enough for basic process info
     if (outputBufferLength < sizeof(PROCESS_INFO))
     {
-        DbgPrint("[IOCTL] Buffer too small for process details");
+        // DbgPrint("[IOCTL] Buffer too small for process details");
         status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
@@ -328,7 +318,7 @@ HandleGetProcessDetails(
     PIMAGE_PROCESS_FILTER filter = TDriverClass::GetImageProcessFilter();
     if (filter == NULL)
     {
-        DbgPrint("[IOCTL] ImageProcessFilter is not initialized");
+        // DbgPrint("[IOCTL] ImageProcessFilter is not initialized");
         status = STATUS_UNSUCCESSFUL;
         goto Exit;
     }
@@ -342,11 +332,11 @@ HandleGetProcessDetails(
     
     if (found)
     {
-        DbgPrint("[IOCTL] Successfully found process %lu details", processId);
+        // DbgPrint("[IOCTL] Successfully found process %lu details", processId);
     }
     else
     {
-        DbgPrint("[IOCTL] Process %lu not found in history", processId);
+        // DbgPrint("[IOCTL] Process %lu not found in history", processId);
         // Initialize process info with basic information
         processInfo.ProcessId = processId;
         processInfo.IsTerminated = TRUE; // Assume terminated if not found
@@ -384,7 +374,7 @@ HandleAddRegistryFilter(
     // Check input parameters
     if (inputBufferLength < sizeof(REGISTRY_FILTER))
     {
-        DbgPrint("[IOCTL] Invalid input buffer size for add registry filter");
+        // DbgPrint("[IOCTL] Invalid input buffer size for add registry filter");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -401,7 +391,7 @@ HandleAddRegistryFilter(
         // Check for valid UNICODE_STRING
         if (registryPath.Buffer == NULL || registryPath.Length == 0)
         {
-            DbgPrint("[IOCTL] Invalid registry path string");
+            // DbgPrint("[IOCTL] Invalid registry path string");
             status = STATUS_INVALID_PARAMETER;
             goto Exit;
         }
@@ -412,7 +402,7 @@ HandleAddRegistryFilter(
                                                       'REGP');
         if (registryPathBuffer == NULL)
         {
-            DbgPrint("[IOCTL] Failed to allocate memory for registry path");
+            // DbgPrint("[IOCTL] Failed to allocate memory for registry path");
             status = STATUS_INSUFFICIENT_RESOURCES;
             goto Exit;
         }
@@ -432,18 +422,17 @@ HandleAddRegistryFilter(
 
         if (result > 0)
         {
-            DbgPrint("[IOCTL] Successfully added registry filter for %wZ with flags 0x%X",
-                     &registryPath, pFilter->FilterFlags);
+            // DbgPrint("[IOCTL] Successfully added registry filter for %wZ with flags 0x%X", &registryPath, pFilter->FilterFlags);
         }
         else
         {
-            DbgPrint("[IOCTL] Failed to add registry filter");
+            // DbgPrint("[IOCTL] Failed to add registry filter");
             status = STATUS_UNSUCCESSFUL;
         }
     }
     else
     {
-        DbgPrint("[IOCTL] Registry filter manager not initialized");
+        // DbgPrint("[IOCTL] Registry filter manager not initialized");
         status = STATUS_UNSUCCESSFUL;
     }
 
@@ -478,7 +467,7 @@ HandleGetRegistryActivity(
     // Check input parameters
     if (inputBufferLength < sizeof(ULONG))
     {
-        DbgPrint("[IOCTL] Invalid input buffer size for registry activity request");
+        // DbgPrint("[IOCTL] Invalid input buffer size for registry activity request");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -489,7 +478,7 @@ HandleGetRegistryActivity(
     // First check if the output buffer is large enough for the header
     if (outputBufferLength < sizeof(REGISTRY_ACTIVITY_LIST))
     {
-        DbgPrint("[IOCTL] Buffer too small for registry activity list");
+        // DbgPrint("[IOCTL] Buffer too small for registry activity list");
         status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
@@ -519,18 +508,18 @@ HandleGetRegistryActivity(
 
         if (!NT_SUCCESS(regStatus))
         {
-            DbgPrint("[IOCTL] Failed to get registry events, status: 0x%X", regStatus);
+            // DbgPrint("[IOCTL] Failed to get registry events, status: 0x%X", regStatus);
         }
         else
         {
-            DbgPrint("[IOCTL] Successfully retrieved %lu registry events", actualCount);
+            // DbgPrint("[IOCTL] Successfully retrieved %lu registry events", actualCount);
         }
     }
 
     pList->Count = actualCount;
     bytesReturned = sizeof(REGISTRY_ACTIVITY_LIST) + (actualCount - 1) * sizeof(REGISTRY_ACTIVITY);
 
-    DbgPrint("[IOCTL] Successfully returned %lu registry activities", actualCount);
+    // DbgPrint("[IOCTL] Successfully returned %lu registry activities", actualCount);
 
 Exit:
     // Set the bytes returned
@@ -557,7 +546,7 @@ HandleGetImageLoadHistory(
     // Check input parameters
     if (inputBufferLength < sizeof(ULONG))
     {
-        DbgPrint("[IOCTL] Invalid input buffer size for image load history request");
+        // DbgPrint("[IOCTL] Invalid input buffer size for image load history request");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -572,7 +561,7 @@ HandleGetImageLoadHistory(
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-            DbgPrint("[IOCTL] Exception when accessing input buffer, code: 0x%08X", GetExceptionCode());
+            // DbgPrint("[IOCTL] Exception when accessing input buffer, code: 0x%08X", GetExceptionCode());
             status = STATUS_INVALID_PARAMETER;
             goto Exit;
         }
@@ -581,7 +570,7 @@ HandleGetImageLoadHistory(
     // First check if the output buffer is large enough for the header
     if (outputBufferLength < sizeof(IMAGE_LOAD_LIST))
     {
-        DbgPrint("[IOCTL] Buffer too small for image load list");
+        // DbgPrint("[IOCTL] Buffer too small for image load list");
         status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
@@ -600,7 +589,7 @@ HandleGetImageLoadHistory(
     PIMAGE_FILTER filter = TDriverClass::GetImageProcessFilter();
     if (filter == NULL)
     {
-        DbgPrint("[IOCTL] ImageProcessFilter is NULL");
+        // DbgPrint("[IOCTL] ImageProcessFilter is NULL");
         status = STATUS_UNSUCCESSFUL;
         goto Exit;
     }
@@ -614,7 +603,7 @@ HandleGetImageLoadHistory(
     pList->Count = actualCount;
     bytesReturned = sizeof(IMAGE_LOAD_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(IMAGE_LOAD_INFO) : 0);
 
-    DbgPrint("[IOCTL] Successfully returned %lu image load entries", actualCount);
+    // DbgPrint("[IOCTL] Successfully returned %lu image load entries", actualCount);
 
 Exit:
     // Set the bytes returned
@@ -641,7 +630,7 @@ HandleGetThreadCreationHistory(
     // Check input parameters
     if (inputBufferLength < sizeof(ULONG))
     {
-        DbgPrint("[IOCTL] Invalid input buffer size for thread creation history request");
+        // DbgPrint("[IOCTL] Invalid input buffer size for thread creation history request");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -656,7 +645,7 @@ HandleGetThreadCreationHistory(
     // First check if the output buffer is large enough for the header
     if (outputBufferLength < sizeof(THREAD_LIST))
     {
-        DbgPrint("[IOCTL] Buffer too small for thread list");
+        // DbgPrint("[IOCTL] Buffer too small for thread list");
         status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
@@ -675,7 +664,7 @@ HandleGetThreadCreationHistory(
     PIMAGE_FILTER filter = TDriverClass::GetImageProcessFilter();
     if (filter == NULL)
     {
-        DbgPrint("[IOCTL] ImageProcessFilter is NULL");
+        // DbgPrint("[IOCTL] ImageProcessFilter is NULL");
         status = STATUS_UNSUCCESSFUL;
         goto Exit;
     }
@@ -689,7 +678,7 @@ HandleGetThreadCreationHistory(
     pList->Count = actualCount;
     bytesReturned = sizeof(THREAD_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(THREAD_INFO) : 0);
 
-    DbgPrint("[IOCTL] Successfully returned %lu thread creation entries", actualCount);
+    // DbgPrint("[IOCTL] Successfully returned %lu thread creation entries", actualCount);
 
 Exit:
     // Set the bytes returned
@@ -714,7 +703,7 @@ HandleGetAlerts(
     // First check if the output buffer is large enough for the header
     if (outputBufferLength < sizeof(ALERT_LIST))
     {
-        DbgPrint("[IOCTL] Buffer too small for alert list\n");
+        // DbgPrint("[IOCTL] Buffer too small for alert list\n");
         status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
@@ -735,7 +724,7 @@ HandleGetAlerts(
 
         // Get the total number of alerts in the queue
         ULONG totalAlerts = alertQueue->GetAlertCount();
-        DbgPrint("[IOCTL] Total alerts in queue: %lu\n", totalAlerts);
+        // DbgPrint("[IOCTL] Total alerts in queue: %lu\n", totalAlerts);
         
         // Allocate a temporary buffer to store all alerts
         if (totalAlerts > 0)
@@ -746,14 +735,14 @@ HandleGetAlerts(
                                                                           'ALCP');
             if (alertCopies == NULL)
             {
-                DbgPrint("[IOCTL] Failed to allocate memory for alert copies\n");
+                // DbgPrint("[IOCTL] Failed to allocate memory for alert copies\n");
                 status = STATUS_INSUFFICIENT_RESOURCES;
                 goto Exit;
             }
 
             // First, get all alerts from the queue without removing them
             ULONG fetchedCount = alertQueue->CopyAllAlerts(alertCopies, totalAlerts);
-            DbgPrint("[IOCTL] Copied %lu alerts from queue\n", fetchedCount);
+            // DbgPrint("[IOCTL] Copied %lu alerts from queue\n", fetchedCount);
 
             // Convert the temporary alerts to the user-mode format
             // Only copy up to maxAlerts or totalAlerts, whichever is smaller
@@ -814,7 +803,7 @@ HandleGetAlerts(
     pList->Count = actualCount;
     bytesReturned = sizeof(ALERT_LIST) + (actualCount > 0 ? (actualCount - 1) * sizeof(ALERT_INFO) : 0);
 
-    DbgPrint("[IOCTL] Successfully returned %lu alerts\n", actualCount);
+    // DbgPrint("[IOCTL] Successfully returned %lu alerts\n", actualCount);
 
 Exit:
     // Set the bytes returned
@@ -855,11 +844,11 @@ HandleClearAlerts(
             }
         }
 
-        DbgPrint("[IOCTL] Cleared %lu alerts from queue", clearedCount);
+        // DbgPrint("[IOCTL] Cleared %lu alerts from queue", clearedCount);
     }
     else
     {
-        DbgPrint("[IOCTL] Detection module not initialized\n");
+        // DbgPrint("[IOCTL] Detection module not initialized\n");
         status = STATUS_UNSUCCESSFUL;
     }
 
@@ -885,7 +874,7 @@ HandleProtectProcess(
     // Check input parameters
     if (inputBufferLength < sizeof(PROCESS_PROTECTION_REQUEST))
     {
-        DbgPrint("[IOCTL] Invalid input buffer size for process protection request\n");
+        // DbgPrint("[IOCTL] Invalid input buffer size for process protection request\n");
         status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -904,11 +893,11 @@ HandleProtectProcess(
             if (processHandle != NULL)
             {
                 TDriverClass::GetObjectMonitor()->UpdateProtectedProcess(processHandle);
-                DbgPrint("[IOCTL] Enabled protection for process %lu\n", pRequest->ProcessId);
+                // DbgPrint("[IOCTL] Enabled protection for process %lu\n", pRequest->ProcessId);
             }
             else
             {
-                DbgPrint("[IOCTL] Cannot protect process with ID 0\n");
+                // DbgPrint("[IOCTL] Cannot protect process with ID 0\n");
                 status = STATUS_INVALID_PARAMETER;
             }
         }
@@ -916,12 +905,12 @@ HandleProtectProcess(
         {
             // Disable protection by setting the protected process ID to an invalid value
             TDriverClass::GetObjectMonitor()->UpdateProtectedProcess(NULL);
-            DbgPrint("[IOCTL] Disabled protection for process %lu\n", pRequest->ProcessId);
+            // DbgPrint("[IOCTL] Disabled protection for process %lu\n", pRequest->ProcessId);
         }
     }
     else
     {
-        DbgPrint("[IOCTL] Object monitor not initialized\n");
+        // DbgPrint("[IOCTL] Object monitor not initialized\n");
         status = STATUS_UNSUCCESSFUL;
     }
 
@@ -948,7 +937,7 @@ HandleGetSystemStats(
     // Check if the output buffer is large enough
     if (outputBufferLength < sizeof(SYSTEM_STATS))
     {
-        DbgPrint("[IOCTL] Buffer too small for system stats\n");
+        // DbgPrint("[IOCTL] Buffer too small for system stats\n");
         status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
@@ -978,7 +967,7 @@ HandleGetSystemStats(
 
     bytesReturned = sizeof(SYSTEM_STATS);
 
-    DbgPrint("[IOCTL] Successfully returned system stats\n");
+    // DbgPrint("[IOCTL] Successfully returned system stats\n");
 
 Exit:
     // Set the bytes returned
@@ -1014,21 +1003,21 @@ DeviceControlDispatch(
 
             if (status == STATUS_BUFFER_TOO_SMALL)
             {
-                DbgPrint("[DRIVER] Buffer too small for CSV export. Required size: %lu\n", bytesReturned);
+                // DbgPrint("[DRIVER] Buffer too small for CSV export. Required size: %lu\n", bytesReturned);
             }
             else if (NT_SUCCESS(status))
             {
-                DbgPrint("[DRIVER] Successfully exported CSV data. Size: %lu bytes\n", bytesReturned);
+                // DbgPrint("[DRIVER] Successfully exported CSV data. Size: %lu bytes\n", bytesReturned);
             }
             else
             {
-                DbgPrint("[DRIVER] Failed to export CSV data. Status: 0x%08X\n", status);
+                // DbgPrint("[DRIVER] Failed to export CSV data. Status: 0x%08X\n", status);
             }
         }
         else
         {
             status = STATUS_UNSUCCESSFUL;
-            DbgPrint("[DRIVER] Registry analyzer not initialized\n");
+            // DbgPrint("[DRIVER] Registry analyzer not initialized\n");
         }
     }
     break;
@@ -1082,7 +1071,7 @@ DeviceControlDispatch(
 
     default:
         status = STATUS_INVALID_DEVICE_REQUEST;
-        DbgPrint("[DRIVER] Unknown IOCTL code: 0x%08X\n", ioControlCode);
+        // DbgPrint("[DRIVER] Unknown IOCTL code: 0x%08X\n", ioControlCode);
         break;
     }
 
