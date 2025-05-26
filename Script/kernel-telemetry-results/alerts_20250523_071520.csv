@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",7848,"2025-05-22 18:14:19",0x0,8004,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\350ba7fca67721c74385faff083914ecdd66ef107a765dfb7ac08b38d5c9c0b","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

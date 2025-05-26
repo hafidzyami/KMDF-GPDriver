@@ -1,0 +1,5 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",4088,"2025-05-22 18:14:49",0xcb09e4,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\856b5dc509c17f5be68186b6a8ab272fc0dd12000c978548d8488ee997b015e","\??\C:\WINDOWS\SysWOW64\cmd.exe"
+2,"Remote Thread Creation",7500,"2025-05-22 18:14:49",0x0,4088,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\856b5dc509c17f5be68186b6a8ab272fc0dd12000c978548d8488ee997b015e","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+3,"Stack Violation",8608,"2025-05-22 18:14:49",0xcb09e4,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\856b5dc509c17f5be68186b6a8ab272fc0dd12000c978548d8488ee997b015e","\??\C:\WINDOWS\SysWOW64\cmd.exe"
+4,"Remote Thread Creation",7500,"2025-05-22 18:14:49",0x0,8608,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\856b5dc509c17f5be68186b6a8ab272fc0dd12000c978548d8488ee997b015e","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

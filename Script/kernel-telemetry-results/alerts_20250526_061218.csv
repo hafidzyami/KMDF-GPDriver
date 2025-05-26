@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3608,"2025-05-22 18:14:15",0x0,7632,"\Device\HarddiskVolume5\new\ransomware_high_confidence\clop\8209162e0985c360c59c568f2f33de74364f0c5f1e984e5785c64825e8ad9fd0.exe","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

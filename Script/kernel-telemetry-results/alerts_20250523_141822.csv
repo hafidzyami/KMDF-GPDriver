@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",7200,"2025-05-22 18:14:15",0x0,1536,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\c4c8be0c939e4c24e11bad90549e3951b7969e78056d819425ca53e87af8d8e","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+2,"Parent PID Spoofing",8288,"2025-05-22 18:14:15",0x0,7200,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\c4c8be0c939e4c24e11bad90549e3951b7969e78056d819425ca53e87af8d8e","\??\C:\WINDOWS\SysWOW64\WerFault.exe"
