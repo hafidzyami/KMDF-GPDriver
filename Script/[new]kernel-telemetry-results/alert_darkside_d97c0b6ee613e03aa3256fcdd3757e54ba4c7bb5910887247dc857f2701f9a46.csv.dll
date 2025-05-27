@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",2436,"2025-05-22 18:14:05",0x0,4652,"\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\d97c0b6ee613e03aa3256fcdd3757e54ba4c7bb5910887247dc857f2701f9a46.","\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\d97c0b6ee613e03aa3256fcdd3757e54ba4c7bb5910887247dc857f2701f9a46."
+2,"Remote Thread Creation",4652,"2025-05-22 18:14:05",0x0,1248,"\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\d97c0b6ee613e03aa3256fcdd3757e54ba4c7bb5910887247dc857f2701f9a46.","\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\d97c0b6ee613e03aa3256fcdd3757e54ba4c7bb5910887247dc857f2701f9a46."

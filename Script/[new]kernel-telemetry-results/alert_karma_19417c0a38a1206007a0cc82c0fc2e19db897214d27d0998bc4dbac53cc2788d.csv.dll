@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",7292,"2025-05-22 18:14:13",0x0,2336,"\Device\HarddiskVolume5\new\ransomware_high_confidence\karma\19417c0a38a1206007a0cc82c0fc2e19db897214d27d0998bc4dbac53cc2788d.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

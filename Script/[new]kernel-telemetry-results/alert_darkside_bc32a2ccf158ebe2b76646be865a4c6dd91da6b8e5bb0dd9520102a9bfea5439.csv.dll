@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:37",0x0,4720,"\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\bc32a2ccf158ebe2b76646be865a4c6dd91da6b8e5bb0dd9520102a9bfea5439.","\Device\HarddiskVolume3\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"

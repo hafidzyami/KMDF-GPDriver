@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",7308,"2025-05-22 18:14:04",0x0,2336,"\Device\HarddiskVolume5\new\ransomware_high_confidence\hive\70b278b5e01f7cc409a112892e8f2ff243afa0d0815d060e31a813ba24316d37.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"
+2,"Parent PID Spoofing",7308,"2025-05-22 18:14:04",0x0,2336,"\Device\HarddiskVolume5\new\ransomware_high_confidence\hive\70b278b5e01f7cc409a112892e8f2ff243afa0d0815d060e31a813ba24316d37.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

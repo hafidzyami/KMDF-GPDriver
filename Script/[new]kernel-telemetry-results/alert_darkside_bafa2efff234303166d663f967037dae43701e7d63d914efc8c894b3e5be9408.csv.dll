@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",3376,"2025-05-22 18:14:24",0x24cb73c,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\bafa2efff234303166d663f967037dae43701e7d63d914efc8c894b3e5be9408.","\??\C:\WINDOWS\SysWOW64\cmd.exe"
+2,"Remote Thread Creation",3908,"2025-05-22 18:14:24",0x0,3376,"\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\bafa2efff234303166d663f967037dae43701e7d63d914efc8c894b3e5be9408.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+3,"Stack Violation",4936,"2025-05-22 18:14:24",0x40518a,0,"\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe","\??\C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe"

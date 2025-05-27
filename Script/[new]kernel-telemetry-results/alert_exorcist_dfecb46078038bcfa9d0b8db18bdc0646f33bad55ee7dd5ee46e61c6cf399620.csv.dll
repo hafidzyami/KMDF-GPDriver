@@ -1,0 +1,7 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3668,"2025-05-22 18:14:04",0x0,6108,"\Device\HarddiskVolume5\new\ransomware_high_confidence\exorcist\dfecb46078038bcfa9d0b8db18bdc0646f33bad55ee7dd5ee46e61c6cf399620.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+2,"Remote Thread Creation",3668,"2025-05-22 18:14:04",0x0,3940,"\Device\HarddiskVolume5\new\ransomware_high_confidence\exorcist\dfecb46078038bcfa9d0b8db18bdc0646f33bad55ee7dd5ee46e61c6cf399620.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+3,"Remote Thread Creation",3668,"2025-05-22 18:14:04",0x0,2204,"\Device\HarddiskVolume5\new\ransomware_high_confidence\exorcist\dfecb46078038bcfa9d0b8db18bdc0646f33bad55ee7dd5ee46e61c6cf399620.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+4,"Remote Thread Creation",3668,"2025-05-22 18:14:04",0x0,1320,"\Device\HarddiskVolume5\new\ransomware_high_confidence\exorcist\dfecb46078038bcfa9d0b8db18bdc0646f33bad55ee7dd5ee46e61c6cf399620.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+5,"Remote Thread Creation",3668,"2025-05-22 18:14:04",0x0,7576,"\Device\HarddiskVolume5\new\ransomware_high_confidence\exorcist\dfecb46078038bcfa9d0b8db18bdc0646f33bad55ee7dd5ee46e61c6cf399620.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+6,"Remote Thread Creation",3668,"2025-05-22 18:14:04",0x0,4200,"\Device\HarddiskVolume5\new\ransomware_high_confidence\exorcist\dfecb46078038bcfa9d0b8db18bdc0646f33bad55ee7dd5ee46e61c6cf399620.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

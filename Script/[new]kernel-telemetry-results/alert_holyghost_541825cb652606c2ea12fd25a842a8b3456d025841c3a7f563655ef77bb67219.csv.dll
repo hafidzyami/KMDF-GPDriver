@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3668,"2025-05-22 18:14:04",0x0,2764,"\Device\HarddiskVolume5\new\ransomware_high_confidence\holyghost\541825cb652606c2ea12fd25a842a8b3456d025841c3a7f563655ef77bb67219","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
