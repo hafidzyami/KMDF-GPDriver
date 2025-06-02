@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",8948,"2025-05-22 18:14:15",0x0,3668,"\Device\HarddiskVolume5\new\ransomware_high_confidence\nightsky\a077a55608ced7cea2bd92e2ce7e43bf51076304990ec7bb40c2b384ce2e5283.","\??\C:\WINDOWS\system32\WerFault.exe"

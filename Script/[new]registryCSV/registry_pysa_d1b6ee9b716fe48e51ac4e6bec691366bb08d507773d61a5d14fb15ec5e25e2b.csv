@@ -1,0 +1,67 @@
+ProcessId,ProcessName,ProcessAgeSeconds,ProcessImageEntropy,SessionId,IsElevated,FirstSeenTime,LastSeenTime,OperationDurationSec,ProcessCreateTime,TotalOperationCount,CreateOperationCount,ModifyOperationCount,DeleteOperationCount,QueryOperationCount,UniqueKeysAccessed,AutorunKeysAccessed,SecurityKeysAccessed,FileAssocKeysAccessed,NetworkingKeysAccessed,ServicesKeysAccessed,SensitiveKeysAccessed,ProcessHijackKeysAccessed,DllHijackKeysAccessed,ComObjectKeysAccessed,OperationBurstCount,MaxOperationsPerBurst,BurstIntervalMs,OperationDensityPerMin,TimingVariance,RemoteOperationCount,FileExtensionModificationCount,SecuritySettingModificationCount,WritesToReadsRatio,RegistryKeyDepthMax,RegistryValueEntropyAvg,ComRegistryModifications,CriticalSystemKeyModifications
+864,\Device\HarddiskVolume3\Windows\System32\services.exe,73,258,0,1,1747937576,1747937650,73,1747937576,251,0,3,0,248,251,0,0,0,0,0,0,12,0,0,2,16826,4294923867,164,0,0,0,0,1,9,0,0,0
+4824,\Device\HarddiskVolume3\Windows\System32\taskhostw.exe,21,276,0,1,1747937576,1747937658,81,1747937576,188,0,0,0,188,188,0,0,0,0,0,0,0,0,0,2,1498,1073722431,285,0,0,0,0,0,12,0,0,0
+3316,\Device\HarddiskVolume3\Windows\System32\svchost.exe,65,281,0,1,1747937577,1747937663,86,1747937577,4564,187,17,0,4360,4564,0,0,0,0,0,433,0,0,0,2,1330,1073699016,4153,0,0,0,0,4,10,237,0,0
+4852,\Device\HarddiskVolume3\Windows\System32\Taskmgr.exe,105,290,0,1,1747937577,1747937682,105,1747937577,14463,5,0,0,14458,14462,0,0,1176,0,0,0,0,0,0,0,0,0,8228,0,0,0,0,0,13,0,0,0
+3156,\Device\HarddiskVolume3\Windows\System32\spoolsv.exe,0,272,0,1,1747937578,1747937649,71,1747937578,11,0,3,0,8,11,0,0,0,0,0,0,0,0,0,1,26,4294896188,0,0,0,0,0,0,8,0,0,0
+884,\Device\HarddiskVolume3\Windows\System32\lsass.exe,70,255,0,1,1747937579,1747937682,102,1747937579,986,18,10,0,958,970,0,0,0,0,0,671,0,0,0,1,1217,4294962294,771,0,0,0,0,2,10,401,0,0
+1520,\Device\HarddiskVolume3\Windows\System32\svchost.exe,70,281,0,1,1747937579,1747937650,70,1747937579,595,52,13,0,530,595,0,0,0,0,0,0,0,0,0,1,499,4294905905,428,0,0,0,0,13,9,125,0,0
+1904,\Device\HarddiskVolume3\Windows\System32\VBoxService.exe,70,266,0,1,1747937579,1747937682,102,1747937579,318,0,0,0,318,318,0,0,0,0,0,0,0,0,0,1,581,4294954659,257,0,0,0,0,0,9,0,0,0
+3332,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1747937580,1747937650,70,1747937580,37,2,5,0,30,37,0,0,0,0,0,0,0,0,0,1,112,4294907612,0,0,0,0,0,0,8,300,0,0
+4364,\Device\HarddiskVolume3\Windows\explorer.exe,87,250,0,1,1747937580,1747937667,87,1747937580,4803,35,10,0,4758,4803,0,0,1541,0,0,0,0,0,0,3,368,805294133,3310,0,0,0,0,0,13,328,0,0
+648,\Device\HarddiskVolume3\Windows\System32\csrss.exe,66,255,0,1,1747937580,1747937682,102,1747937580,170,0,0,0,170,170,0,0,0,0,0,0,0,0,0,3,408,805286273,90,0,0,0,0,0,8,0,0,0
+2820,\Device\HarddiskVolume3\Windows\System32\VBoxService.exe,0,266,0,1,1747937580,1747937642,62,1747937580,45,0,0,0,45,45,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+3484,\Device\HarddiskVolume3\Windows\System32\conhost.exe,0,281,0,1,1747937580,1747937642,62,1747937580,152,0,0,0,152,152,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,0,0,0
+728,\Device\HarddiskVolume3\Windows\System32\csrss.exe,100,255,0,1,1747937580,1747937682,102,1747937580,595,0,0,0,595,595,0,0,0,0,0,0,0,0,0,2,1280,1073690431,300,0,0,0,0,0,11,0,0,0
+2364,\Device\HarddiskVolume3\Windows\System32\cmd.exe,0,235,0,1,1747937580,1747937580,0,1747937580,77,0,0,0,77,77,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+3668,\Device\HarddiskVolume5\new\ransomware_high_confidence\pysa\d1b6ee9b716fe48e51ac4e6bec691366bb08d507773d61a5d14fb15ec5e25e2b.exe,0,327,0,1,1747937580,1747937642,62,1747937580,149,0,0,0,149,149,0,0,0,0,0,8,3,0,3,1,949,4294905118,0,0,0,0,0,0,9,0,0,0
+1984,\Device\HarddiskVolume3\Windows\System32\conhost.exe,0,281,0,1,1747937580,1747937580,0,1747937580,578,0,0,0,578,578,0,0,102,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,13,0,0,0
+944,\Device\HarddiskVolume3\Windows\System32\svchost.exe,73,281,0,1,1747937580,1747937653,73,1747937580,1533,6,1,0,1526,1533,0,0,548,0,0,0,0,0,20,2,478,1073717088,1232,0,0,0,0,0,13,0,0,0
+1008,\Device\HarddiskVolume3\Windows\System32\svchost.exe,86,281,0,1,1747937580,1747937666,86,1747937580,1852,26,15,1,1810,1848,0,0,150,0,0,52,0,0,6,2,719,1073716879,1255,0,0,0,0,1,16,251,0,0
+2776,\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.22.11141.0_x64__8wekyb3d8bbwe\OpenConsole.exe,0,259,0,1,1747937580,1747937580,0,1747937580,1335,0,1,0,1334,1335,0,0,294,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,13,258,0,0
+3288,\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.22.11141.0_x64__8wekyb3d8bbwe\WindowsTerminal.exe,0,323,0,1,1747937580,1747937580,0,1747937580,2810,6,1,0,2803,2807,0,0,754,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,13,258,0,0
+4660,\Device\HarddiskVolume3\Windows\System32\sihost.exe,86,280,0,1,1747937580,1747937666,86,1747937580,1103,2,0,0,1101,1103,0,0,365,0,0,0,0,0,0,2,7616,1073684648,767,0,0,0,0,0,13,0,0,0
+5024,\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.22.11141.0_x64__8wekyb3d8bbwe\WindowsTerminal.exe,41,323,0,1,1747937580,1747937621,41,1747937580,1586,0,0,0,1586,1586,0,0,748,0,0,0,0,0,0,2,1896,1073729634,2195,0,0,0,0,0,13,0,0,0
+5964,\Device\HarddiskVolume3\Windows\System32\ctfmon.exe,0,290,0,1,1747937580,1747937580,0,1747937580,1672,2,2,0,1668,1672,0,0,136,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,474,0,0
+5172,\Device\HarddiskVolume3\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\StartMenuExperienceHost.exe,0,311,0,1,1747937584,1747937588,4,1747937584,9,0,3,0,6,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+1696,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1747937586,1747937658,72,1747937586,33,0,1,0,32,33,0,0,0,0,0,0,0,0,0,1,1857,4294905720,0,0,0,0,0,0,8,0,0,0
+1740,\Device\HarddiskVolume3\Windows\System32\upfc.exe,69,237,0,1,1747937589,1747937658,69,1747937589,110,3,4,0,103,110,0,0,41,0,0,0,0,0,5,2,231,1073712881,86,0,0,0,0,6,9,229,0,0
+3452,\Device\HarddiskVolume3\Windows\System32\svchost.exe,82,281,0,1,1747937589,1747937682,93,1747937589,15639,5048,0,0,10591,15609,0,0,229,0,0,0,0,0,0,3,550,805275714,11414,0,0,0,0,47,9,0,0,0
+2936,\Device\HarddiskVolume3\Windows\System32\svchost.exe,90,281,0,1,1747937590,1747937680,90,1747937590,228,16,0,0,212,212,0,0,0,0,0,0,0,0,0,3,5336,805277698,133,0,0,0,0,6,9,0,0,0
+3048,\Device\HarddiskVolume3\Users\wineleven\AppData\Local\Microsoft\OneDrive\OneDrive.exe,0,266,0,1,1747937597,1747937647,50,1747937597,78,0,0,2,76,78,0,0,0,0,0,0,0,0,0,5,16288,452980165,0,0,0,0,0,0,9,0,0,0
+2128,\Device\HarddiskVolume3\Windows\System32\svchost.exe,85,281,0,1,1747937597,1747937682,85,1747937597,1120,10,0,0,1110,1115,0,0,0,0,0,0,0,0,0,2,2531,1073724309,776,0,0,0,0,0,9,0,0,0
+5312,\Device\HarddiskVolume3\Windows\System32\wbem\WMIADAP.exe,82,281,0,1,1747937599,1747937682,83,1747937599,5379,2,0,0,5377,5379,0,0,210,0,0,0,0,0,6,0,0,0,3878,0,0,0,0,0,8,0,0,0
+948,\Device\HarddiskVolume3\Windows\System32\wbem\WmiPrvSE.exe,0,291,0,1,1747937599,1747937599,0,1747937599,675,18,15,4,638,674,0,0,395,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,8,347,0,0
+2808,\Device\HarddiskVolume3\Windows\System32\svchost.exe,45,281,0,1,1747937607,1747937682,75,1747937607,157,4,0,0,153,157,0,0,0,0,0,0,0,0,0,4,1585,603966961,133,0,0,0,0,2,9,0,0,0
+1492,\Device\HarddiskVolume3\Windows\System32\svchost.exe,8,281,0,1,1747937641,1747937653,11,1747937641,156,4,4,0,148,156,0,0,0,0,0,0,0,0,0,0,0,0,750,0,0,0,0,4,10,449,0,0
+4544,\Device\HarddiskVolume3\Windows\System32\taskhostw.exe,0,276,0,1,1747937641,1747937642,1,1747937641,179,7,15,0,157,179,0,0,29,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,9,385,0,0
+7560,\Device\HarddiskVolume3\Windows\System32\VBoxService.exe,0,266,0,1,1747937642,1747937642,0,1747937642,45,0,0,0,45,45,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+6816,\Device\HarddiskVolume3\Windows\System32\conhost.exe,0,281,0,1,1747937642,1747937642,0,1747937642,152,0,0,0,152,152,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,0,0,0
+1988,\Device\HarddiskVolume3\Windows\System32\cmd.exe,0,235,0,1,1747937642,1747937642,0,1747937642,57,0,0,0,57,57,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+2544,\Device\HarddiskVolume3\Windows\System32\taskkill.exe,0,275,0,1,1747937642,1747937642,0,1747937642,849,2,1,0,846,849,0,0,600,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,9,0,0,0
+8224,\Device\HarddiskVolume3\Windows\System32\wbem\WmiPrvSE.exe,0,291,0,1,1747937642,1747937682,40,1747937642,698,26,4,3,665,685,0,0,397,0,0,0,0,0,6,1,1348,4294943684,0,0,0,0,0,2,8,318,0,0
+8424,\Device\HarddiskVolume3\Windows\System32\VBoxService.exe,0,266,0,1,1747937646,1747937647,0,1747937646,45,0,0,0,45,45,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+8452,\Device\HarddiskVolume3\Windows\System32\conhost.exe,0,281,0,1,1747937646,1747937647,0,1747937646,152,0,0,0,152,152,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,0,0,0
+8648,\Device\HarddiskVolume3\Windows\System32\cmd.exe,0,235,0,1,1747937646,1747937647,0,1747937646,74,0,1,0,73,74,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+8684,\Device\HarddiskVolume3\Users\wineleven\Documents\Hafidz\IOCTL.exe,0,288,0,1,1747937647,1747937647,0,1747937647,43,0,0,0,43,43,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+792,\Device\HarddiskVolume3\Windows\System32\winlogon.exe,0,275,0,1,1747937648,1747937648,0,1747937648,9,0,3,0,6,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+720,\Device\HarddiskVolume3\Windows\System32\wininit.exe,0,254,0,1,1747937648,1747937648,0,1747937648,6,0,2,0,4,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+1200,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1747937648,1747937658,9,1747937648,88,4,4,0,80,88,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,357,0,0
+1096,\Device\HarddiskVolume3\Windows\System32\dwm.exe,0,235,0,1,1747937648,1747937648,0,1747937648,30,0,10,0,20,30,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+2408,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1747937649,1747937649,0,1747937649,6,0,2,0,4,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+2788,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1747937649,1747937654,4,1747937649,16,0,1,0,15,16,0,0,12,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0
+2160,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1747937649,1747937649,0,1747937649,7,0,0,0,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0
+8912,\Device\HarddiskVolume3\Windows\System32\taskhostw.exe,3,276,0,1,1747937649,1747937653,3,1747937649,3627,270,5,0,3352,3624,0,0,31,0,0,0,0,0,6,0,0,0,72000,0,0,0,0,7,11,111,0,0
+3344,\Device\HarddiskVolume3\ProgramData\Microsoft\Windows Defender\Platform\4.18.25030.2-0\MpDefenderCoreService.exe,3,296,0,1,1747937650,1747937653,3,1747937650,2049,0,1,0,2048,2049,0,98,0,0,0,0,0,0,0,0,0,0,40000,0,0,0,0,0,10,0,0,0
+9168,\Device\HarddiskVolume3\Windows\System32\svchost.exe,8,281,0,1,1747937650,1747937658,8,1747937650,4670,315,10,3,4342,4666,0,0,231,0,0,9,34,0,12,0,0,0,34500,0,0,0,0,7,11,202,0,0
+1792,\Device\HarddiskVolume3\Windows\System32\VBoxService.exe,0,266,0,1,1747937650,1747937650,0,1747937650,44,0,0,0,44,44,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+7928,\Device\HarddiskVolume3\Windows\System32\conhost.exe,0,281,0,1,1747937650,1747937650,0,1747937650,150,0,0,0,150,150,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,9,0,0,0
+9396,\Device\HarddiskVolume3\Windows\System32\cmd.exe,0,235,0,1,1747937650,1747937653,3,1747937650,78,0,0,0,78,78,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+5372,\Device\HarddiskVolume3\Windows\System32\SearchIndexer.exe,0,294,0,1,1747937651,1747937663,12,1747937651,32,0,0,0,32,32,0,0,0,0,0,0,0,0,0,1,1133,4294960280,0,0,0,0,0,0,9,0,0,0
+9140,\Device\HarddiskVolume3\Windows\System32\SIHClient.exe,29,288,0,1,1747937653,1747937682,29,1747937653,919,24,0,0,895,908,0,0,179,0,0,0,0,0,8,0,0,0,1862,0,0,0,0,2,10,0,0,0
+4772,\Device\HarddiskVolume3\Windows\System32\svchost.exe,0,281,0,1,1747937653,1747937658,4,1747937653,49,0,0,0,49,49,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0
+9804,\Device\HarddiskVolume3\Windows\System32\backgroundTaskHost.exe,4,327,0,1,1747937653,1747937658,4,1747937653,1411,17,0,0,1394,1409,0,0,427,0,0,0,0,0,9,0,0,0,21000,0,0,0,0,1,12,0,0,0
+3548,\Device\HarddiskVolume3\ProgramData\Microsoft\Windows Defender\Platform\4.18.25030.2-0\MsMpEng.exe,0,281,0,1,1747937656,1747937658,1,1747937656,8,0,1,0,7,8,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,7,225,0,0
+4892,\Device\HarddiskVolume3\Windows\System32\RuntimeBroker.exe,0,320,0,1,1747937658,1747937658,0,1747937658,94,0,0,0,94,94,0,0,3,0,0,27,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0
+9500,\Device\HarddiskVolume3\Windows\System32\SearchProtocolHost.exe,0,304,0,1,1747937663,1747937663,0,1747937663,1275,2,0,0,1273,1274,0,0,483,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,12,0,0,0
+9516,\Device\HarddiskVolume3\Users\wineleven\AppData\Local\Programs\Python\Python313\python.exe,0,290,0,1,1747937680,1747937682,2,1747937680,53,0,0,0,53,53,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,8,0,0,0

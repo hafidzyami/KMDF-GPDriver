@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:06",0x0,6204,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\d5d744e0f7984ec01593da35f26bf24e95e4b1cc8bd1c0ff4f31de5dbf94e38f.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\VuwgsTeLIlan.exe"
+2,"Remote Thread Creation",4844,"2025-05-22 18:14:06",0x0,7420,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\d5d744e0f7984ec01593da35f26bf24e95e4b1cc8bd1c0ff4f31de5dbf94e38f.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\RZCDfpZmUlan.exe"

@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",1324,"2025-05-22 18:14:06",0x0,4844,"\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\e93c9326e4e8fc5bee71382d44b314180187d1f8fd2c64ab3a6050958076710c.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

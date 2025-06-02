@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:05",0x0,5868,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\4355077d9e650cde600c29caf7fc7128ebb1f42331f130bbfe0e66265c67022a.","\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\lsass.exe"
+2,"Remote Thread Creation",4844,"2025-05-22 18:14:05",0x0,8020,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\4355077d9e650cde600c29caf7fc7128ebb1f42331f130bbfe0e66265c67022a.","\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsNotepad_11.2501.31.0_x64__8wekyb3d8bbwe\Notepad\Notepad.exe"

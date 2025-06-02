@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:15:31",0x0,2472,"\Device\HarddiskVolume5\new\ransomware_high_confidence\netwalker\882e89ea1b8d70646bdf6476d8cb46991b950f27e03e93bf49ea3209c2d69581","\Device\HarddiskVolume3\Windows\System32\vssadmin.exe"

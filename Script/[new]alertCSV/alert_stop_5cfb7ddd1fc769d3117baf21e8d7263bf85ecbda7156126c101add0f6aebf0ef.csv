@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",5608,"2025-05-22 18:14:04",0x27b0257,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\stop\5cfb7ddd1fc769d3117baf21e8d7263bf85ecbda7156126c101add0f6aebf0ef.exe","\??\D:\new\ransomware_high_confidence\stop\5cfb7ddd1fc769d3117baf21e8d7263bf85ecbda7156126c101add0f6aebf0ef.exe"
+2,"Remote Thread Creation",3644,"2025-05-22 18:14:04",0x0,5608,"\Device\HarddiskVolume5\new\ransomware_high_confidence\stop\5cfb7ddd1fc769d3117baf21e8d7263bf85ecbda7156126c101add0f6aebf0ef.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\stop\5cfb7ddd1fc769d3117baf21e8d7263bf85ecbda7156126c101add0f6aebf0ef.exe"

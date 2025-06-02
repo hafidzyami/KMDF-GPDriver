@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",9816,"2025-05-22 18:15:20",0x7ffe76de85c2,0,"\Device\HarddiskVolume3\Program Files (x86)\Microsoft\EdgeWebView\Application\135.0.3179.98\msedgewebview2.exe","\??\C:\Program Files (x86)\Microsoft\EdgeWebView\Application\135.0.3179.98\msedgewebview2.exe"

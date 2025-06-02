@@ -1,0 +1,5 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3644,"2025-05-22 18:14:50",0x0,4720,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\16166851c86178085cfa28127c3e20dfe692ac9da7428c08888c9c4b2d0aadad.","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
+2,"Remote Thread Creation",3644,"2025-05-22 18:14:50",0x0,2776,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\16166851c86178085cfa28127c3e20dfe692ac9da7428c08888c9c4b2d0aadad.","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
+3,"Remote Thread Creation",3644,"2025-05-22 18:14:50",0x0,2708,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\16166851c86178085cfa28127c3e20dfe692ac9da7428c08888c9c4b2d0aadad.","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
+4,"Remote Thread Creation",3644,"2025-05-22 18:14:50",0x0,6680,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\16166851c86178085cfa28127c3e20dfe692ac9da7428c08888c9c4b2d0aadad.","\Device\HarddiskVolume3\Windows\System32\cmd.exe"

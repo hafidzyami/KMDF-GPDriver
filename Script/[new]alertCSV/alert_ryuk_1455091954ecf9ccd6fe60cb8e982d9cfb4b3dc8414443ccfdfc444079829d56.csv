@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:06",0x0,7880,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\1455091954ecf9ccd6fe60cb8e982d9cfb4b3dc8414443ccfdfc444079829d56.exe","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
+2,"Parent PID Spoofing",7008,"2025-05-22 18:14:06",0x0,5076,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\1455091954ecf9ccd6fe60cb8e982d9cfb4b3dc8414443ccfdfc444079829d56.exe","\??\C:\WINDOWS\system32\WerFault.exe"

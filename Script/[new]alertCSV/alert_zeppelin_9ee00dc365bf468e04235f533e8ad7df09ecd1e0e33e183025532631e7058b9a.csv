@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3668,"2025-05-22 18:14:22",0x0,4884,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\9ee00dc365bf468e04235f533e8ad7df09ecd1e0e33e183025532631e7058b9a.","\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\spoolsv.exe"
+2,"Remote Thread Creation",3668,"2025-05-22 18:14:22",0x0,3732,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\9ee00dc365bf468e04235f533e8ad7df09ecd1e0e33e183025532631e7058b9a.","\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsNotepad_11.2501.31.0_x64__8wekyb3d8bbwe\Notepad\Notepad.exe"
+3,"Parent PID Spoofing",146184,"2025-05-22 18:14:22",0x0,4916,"\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\spoolsv.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

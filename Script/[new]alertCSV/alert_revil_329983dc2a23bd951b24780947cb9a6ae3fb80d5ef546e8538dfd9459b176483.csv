@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",2436,"2025-05-22 18:14:08",0x724758,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\revil\329983dc2a23bd951b24780947cb9a6ae3fb80d5ef546e8538dfd9459b176483.exe","\??\C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe"
+2,"Remote Thread Creation",3668,"2025-05-22 18:14:08",0x0,2436,"\Device\HarddiskVolume5\new\ransomware_high_confidence\revil\329983dc2a23bd951b24780947cb9a6ae3fb80d5ef546e8538dfd9459b176483.exe","\Device\HarddiskVolume3\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"

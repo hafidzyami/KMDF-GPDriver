@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:49",0x0,6228,"\Device\HarddiskVolume5\new\ransomware_high_confidence\babuk\1deb1efad2c469198aabbb618285e2229052273cf654ee5925c2540ded224402.exe","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
+2,"Parent PID Spoofing",10056,"2025-05-22 18:14:49",0x0,4844,"\Device\HarddiskVolume5\new\ransomware_high_confidence\babuk\1deb1efad2c469198aabbb618285e2229052273cf654ee5925c2540ded224402.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

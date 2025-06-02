@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3684,"2025-05-22 18:14:05",0x0,6680,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\647f76c278160f537fce57e355f7e8d42e2b381f28a779ad9b71c00f20fb3ced.exe","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:15:15",0x0,1536,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\81515e1c72fadae2c4bb15883e0c1d8979b49fd52d8c65ca03e05a75ca6683c","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+2,"Remote Thread Creation",4844,"2025-05-22 18:15:15",0x0,8304,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbasta\81515e1c72fadae2c4bb15883e0c1d8979b49fd52d8c65ca03e05a75ca6683c","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

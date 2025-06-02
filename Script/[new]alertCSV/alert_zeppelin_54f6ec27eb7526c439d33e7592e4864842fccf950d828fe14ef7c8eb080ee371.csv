@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3668,"2025-05-22 18:14:42",0x0,5492,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\54f6ec27eb7526c439d33e7592e4864842fccf950d828fe14ef7c8eb080ee371.","\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\explorer.exe"
+2,"Stack Violation",8560,"2025-05-22 18:14:42",0x77c8a2ac,0,"\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\explorer.exe","\??\C:\Users\wineleven\AppData\Roaming\Microsoft\Windows\explorer.exe"

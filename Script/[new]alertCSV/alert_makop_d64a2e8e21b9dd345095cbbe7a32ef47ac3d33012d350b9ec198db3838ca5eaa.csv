@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",1536,"2025-05-22 18:14:09",0x0,2336,"\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\d64a2e8e21b9dd345095cbbe7a32ef47ac3d33012d350b9ec198db3838ca5eaa.exe","\??\D:\new\ransomware_high_confidence\makop\d64a2e8e21b9dd345095cbbe7a32ef47ac3d33012d350b9ec198db3838ca5eaa.exe"
+2,"Remote Thread Creation",2336,"2025-05-22 18:14:09",0x0,4072,"\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\d64a2e8e21b9dd345095cbbe7a32ef47ac3d33012d350b9ec198db3838ca5eaa.exe","\Device\HarddiskVolume3\Windows\System32\cmd.exe"

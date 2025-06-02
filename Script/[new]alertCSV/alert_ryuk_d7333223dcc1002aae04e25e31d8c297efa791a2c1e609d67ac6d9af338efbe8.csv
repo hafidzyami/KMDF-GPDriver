@@ -1,0 +1,5 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",2336,"2025-05-22 18:14:06",0x0,3476,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\d7333223dcc1002aae04e25e31d8c297efa791a2c1e609d67ac6d9af338efbe8.exe","\Device\HarddiskVolume3\Windows\SysWOW64\icacls.exe"
+2,"Remote Thread Creation",2336,"2025-05-22 18:14:06",0x0,1248,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\d7333223dcc1002aae04e25e31d8c297efa791a2c1e609d67ac6d9af338efbe8.exe","\Device\HarddiskVolume3\Windows\SysWOW64\icacls.exe"
+3,"Remote Thread Creation",2336,"2025-05-22 18:14:06",0x0,4648,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\d7333223dcc1002aae04e25e31d8c297efa791a2c1e609d67ac6d9af338efbe8.exe","\Device\HarddiskVolume3\Windows\SysWOW64\icacls.exe"
+4,"Remote Thread Creation",2336,"2025-05-22 18:14:06",0x0,2236,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\d7333223dcc1002aae04e25e31d8c297efa791a2c1e609d67ac6d9af338efbe8.exe","\Device\HarddiskVolume3\Windows\SysWOW64\icacls.exe"

@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:44",0x0,1928,"\Device\HarddiskVolume5\new\ransomware_high_confidence\lorenz\fcb8f82961a3f02c9e94da452c5efef868a2c2344fbaaeca51b3c710bb0df8cf.ex","\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\MoUsoCoreWorker.exe"
+2,"Remote Thread Creation",1928,"2025-05-22 18:14:44",0x0,10172,"\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\MoUsoCoreWorker.exe","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+3,"Remote Thread Creation",1928,"2025-05-22 18:14:44",0x0,10164,"\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\MoUsoCoreWorker.exe","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

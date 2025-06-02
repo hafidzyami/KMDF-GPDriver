@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:04",0x0,6780,"\Device\HarddiskVolume5\new\ransomware_high_confidence\stop\96b6e097f79c99aa21d05542bd4a6317303a28aaf6fb4ff0f790a7f701747979.exe","\Device\HarddiskVolume3\Windows\SysWOW64\icacls.exe"
+2,"Remote Thread Creation",4844,"2025-05-22 18:14:04",0x0,2868,"\Device\HarddiskVolume5\new\ransomware_high_confidence\stop\96b6e097f79c99aa21d05542bd4a6317303a28aaf6fb4ff0f790a7f701747979.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\stop\96b6e097f79c99aa21d05542bd4a6317303a28aaf6fb4ff0f790a7f701747979.exe"

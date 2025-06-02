@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:13",0x0,3172,"\Device\HarddiskVolume5\new\ransomware_high_confidence\babuk\30fcff7add11ea6685a233c8ce1fc30abe67044630524a6eb363573a4a9f88b8.exe","\Device\HarddiskVolume3\Windows\System32\cmd.exe"

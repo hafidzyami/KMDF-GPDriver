@@ -1,0 +1,5 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",2380,"2025-05-22 18:14:52",0x0,7968,"\Device\HarddiskVolume5\new\ransomware_high_confidence\wastedlocker\905ea119ad8d3e54cd228c458a1b5681abc1f35df782977a23812ec4efa02","\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Extension:bin"
+2,"Remote Thread Creation",7968,"2025-05-22 18:14:52",0x0,6228,"\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Extension:bin","\Device\HarddiskVolume3\Windows\System32\vssadmin.exe"
+3,"Remote Thread Creation",7968,"2025-05-22 18:14:52",0x0,2216,"\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Extension:bin","\Device\HarddiskVolume3\Windows\SysWOW64\takeown.exe"
+4,"Remote Thread Creation",7968,"2025-05-22 18:14:52",0x0,5208,"\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Extension:bin","\Device\HarddiskVolume3\Windows\SysWOW64\icacls.exe"

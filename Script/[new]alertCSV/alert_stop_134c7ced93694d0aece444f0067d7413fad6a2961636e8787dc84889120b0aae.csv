@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",6948,"2025-05-22 18:14:04",0x0,4844,"\Device\HarddiskVolume5\new\ransomware_high_confidence\stop\134c7ced93694d0aece444f0067d7413fad6a2961636e8787dc84889120b0aae.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

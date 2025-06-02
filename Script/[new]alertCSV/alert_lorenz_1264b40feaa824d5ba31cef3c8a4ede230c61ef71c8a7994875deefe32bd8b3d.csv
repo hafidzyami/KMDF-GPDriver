@@ -1,0 +1,7 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:10",0x0,4196,"\Device\HarddiskVolume5\new\ransomware_high_confidence\lorenz\1264b40feaa824d5ba31cef3c8a4ede230c61ef71c8a7994875deefe32bd8b3d.ex","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+2,"Remote Thread Creation",5076,"2025-05-22 18:14:10",0x0,3708,"\Device\HarddiskVolume5\new\ransomware_high_confidence\lorenz\1264b40feaa824d5ba31cef3c8a4ede230c61ef71c8a7994875deefe32bd8b3d.ex","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+3,"Remote Thread Creation",5076,"2025-05-22 18:14:10",0x0,7764,"\Device\HarddiskVolume5\new\ransomware_high_confidence\lorenz\1264b40feaa824d5ba31cef3c8a4ede230c61ef71c8a7994875deefe32bd8b3d.ex","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+4,"Remote Thread Creation",5076,"2025-05-22 18:14:10",0x0,2688,"\Device\HarddiskVolume5\new\ransomware_high_confidence\lorenz\1264b40feaa824d5ba31cef3c8a4ede230c61ef71c8a7994875deefe32bd8b3d.ex","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+5,"Remote Thread Creation",5076,"2025-05-22 18:14:10",0x0,8212,"\Device\HarddiskVolume5\new\ransomware_high_confidence\lorenz\1264b40feaa824d5ba31cef3c8a4ede230c61ef71c8a7994875deefe32bd8b3d.ex","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+6,"Remote Thread Creation",5076,"2025-05-22 18:14:10",0x0,8344,"\Device\HarddiskVolume5\new\ransomware_high_confidence\lorenz\1264b40feaa824d5ba31cef3c8a4ede230c61ef71c8a7994875deefe32bd8b3d.ex","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

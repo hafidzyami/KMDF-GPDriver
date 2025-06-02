@@ -1,0 +1,5 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",4472,"2025-05-22 18:14:05",0x23e30fb,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\0bed6711e6db24563a66ee99928864e8cf3f8cff0636c1efca1b14ef15941603.","\??\C:\WINDOWS\SysWOW64\cmd.exe"
+2,"Remote Thread Creation",2336,"2025-05-22 18:14:05",0x0,4472,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\0bed6711e6db24563a66ee99928864e8cf3f8cff0636c1efca1b14ef15941603.","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"
+3,"Stack Violation",3080,"2025-05-22 18:14:05",0x23e30fb,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\0bed6711e6db24563a66ee99928864e8cf3f8cff0636c1efca1b14ef15941603.","\??\C:\Users\wineleven\AppData\Roaming\Microsoft\Windows\ctfmon.exe"
+4,"Remote Thread Creation",2336,"2025-05-22 18:14:05",0x0,3080,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\0bed6711e6db24563a66ee99928864e8cf3f8cff0636c1efca1b14ef15941603.","\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\ctfmon.exe"

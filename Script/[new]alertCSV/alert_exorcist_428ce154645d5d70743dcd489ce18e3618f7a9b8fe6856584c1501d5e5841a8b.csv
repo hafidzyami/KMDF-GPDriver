@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",7584,"2025-05-22 18:14:04",0x0,3668,"\Device\HarddiskVolume5\new\ransomware_high_confidence\exorcist\428ce154645d5d70743dcd489ce18e3618f7a9b8fe6856584c1501d5e5841a8b.","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

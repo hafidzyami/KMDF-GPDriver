@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",9028,"2025-05-22 18:14:05",0x720678,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\b670441066ff868d06c682e5167b9dbc85b5323f3acfbbc044cabc0e5a594186.","\??\C:\WINDOWS\SYSTEM32\vssadmin.exe"
+2,"Remote Thread Creation",4844,"2025-05-22 18:14:05",0x0,9028,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\b670441066ff868d06c682e5167b9dbc85b5323f3acfbbc044cabc0e5a594186.","\Device\HarddiskVolume3\Windows\System32\vssadmin.exe"

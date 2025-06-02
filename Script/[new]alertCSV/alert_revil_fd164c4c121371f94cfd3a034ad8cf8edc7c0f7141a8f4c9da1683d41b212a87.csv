@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:31",0x0,2008,"\Device\HarddiskVolume5\new\ransomware_high_confidence\revil\fd164c4c121371f94cfd3a034ad8cf8edc7c0f7141a8f4c9da1683d41b212a87.exe","\Device\HarddiskVolume3\Windows\SysWOW64\netsh.exe"

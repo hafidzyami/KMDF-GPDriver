@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:05",0x0,2776,"\Device\HarddiskVolume5\new\ransomware_high_confidence\gandcrab\1b808c06993ff740e36df55805d367217933c17bff9a34c6767a5e6f3d4453fd.","\Device\HarddiskVolume5\new\ransomware_high_confidence\gandcrab\1b808c06993ff740e36df55805d367217933c17bff9a34c6767a5e6f3d4453fd."

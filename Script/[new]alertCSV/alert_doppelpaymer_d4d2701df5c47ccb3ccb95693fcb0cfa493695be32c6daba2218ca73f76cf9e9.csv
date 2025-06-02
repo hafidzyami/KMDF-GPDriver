@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",8144,"2025-05-22 18:14:04",0x0,4844,"\Device\HarddiskVolume5\new\ransomware_high_confidence\doppelpaymer\d4d2701df5c47ccb3ccb95693fcb0cfa493695be32c6daba2218ca73f76cf","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

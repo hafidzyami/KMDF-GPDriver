@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:08",0x0,3356,"\Device\HarddiskVolume5\new\ransomware_high_confidence\dharma\00ce72bb6fb1d2c1d32aa4c4a147e1b9b390cf9d3ae8b5c0cab2718118db4430.ex","\Device\HarddiskVolume3\Windows\System32\cmd.exe"

@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",5452,"2025-05-22 18:14:06",0x242c377,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\4cd59f4f2c399a3f23e2b4ae73d80a2136b2aed895bec72fa12e9b52a750d2cc.exe","\??\D:\new\ransomware_high_confidence\makop\4cd59f4f2c399a3f23e2b4ae73d80a2136b2aed895bec72fa12e9b52a750d2cc.exe"
+2,"Remote Thread Creation",4844,"2025-05-22 18:14:06",0x0,5452,"\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\4cd59f4f2c399a3f23e2b4ae73d80a2136b2aed895bec72fa12e9b52a750d2cc.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\4cd59f4f2c399a3f23e2b4ae73d80a2136b2aed895bec72fa12e9b52a750d2cc.exe"
+3,"Parent PID Spoofing",5772,"2025-05-22 18:14:06",0x0,4844,"\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\4cd59f4f2c399a3f23e2b4ae73d80a2136b2aed895bec72fa12e9b52a750d2cc.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"
