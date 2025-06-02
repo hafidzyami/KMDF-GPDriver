@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3644,"2025-05-22 18:14:05",0x0,524,"\Device\HarddiskVolume5\new\ransomware_high_confidence\nefilim\52e25bdd600695cfed0d4ee3aca4f121bfebf0de889593e6ba06282845cf39ea.e","\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\IXP000.TMP\inj.exe"
+2,"Remote Thread Creation",524,"2025-05-22 18:14:05",0x0,4900,"\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\IXP000.TMP\inj.exe","\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\IXP000.TMP\inj.exe"
+3,"Remote Thread Creation",4900,"2025-05-22 18:14:05",0x0,4504,"\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\IXP000.TMP\inj.exe","\Device\HarddiskVolume3\Program Files\Mozilla Firefox\firefox.exe"

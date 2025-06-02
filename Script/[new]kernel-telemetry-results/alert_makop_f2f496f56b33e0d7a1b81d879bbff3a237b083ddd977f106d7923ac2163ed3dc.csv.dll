@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:05",0x0,7632,"\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\f2f496f56b33e0d7a1b81d879bbff3a237b083ddd977f106d7923ac2163ed3dc.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\makop\f2f496f56b33e0d7a1b81d879bbff3a237b083ddd977f106d7923ac2163ed3dc.exe"

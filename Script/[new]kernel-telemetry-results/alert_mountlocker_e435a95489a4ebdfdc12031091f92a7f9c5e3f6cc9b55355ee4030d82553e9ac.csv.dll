@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:13",0x0,8172,"\Device\HarddiskVolume5\new\ransomware_high_confidence\mountlocker\e435a95489a4ebdfdc12031091f92a7f9c5e3f6cc9b55355ee4030d82553e9","\Device\HarddiskVolume3\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"

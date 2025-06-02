@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:10",0x0,4720,"\Device\HarddiskVolume5\new\ransomware_high_confidence\netwalker\de04d2402154f676f757cf1380671f396f3fc9f7dbb683d9461edd2718c4e09d","\Device\HarddiskVolume3\Windows\SysWOW64\explorer.exe"
+2,"Stack Violation",3164,"2025-05-22 18:14:10",0x12153a,0,"\Device\HarddiskVolume3\Windows\SysWOW64\explorer.exe","\??\C:\WINDOWS\SysWOW64\explorer.exe"
+3,"Stack Violation",4312,"2025-05-22 18:14:10",0x123640,0,"\Device\HarddiskVolume3\Windows\SysWOW64\explorer.exe","\??\C:\WINDOWS\system32\vssadmin.exe"

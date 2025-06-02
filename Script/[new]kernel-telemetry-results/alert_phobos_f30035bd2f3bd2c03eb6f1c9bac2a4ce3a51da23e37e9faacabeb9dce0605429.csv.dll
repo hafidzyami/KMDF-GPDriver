@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",8148,"2025-05-22 18:14:39",0x0,5076,"\Device\HarddiskVolume5\new\ransomware_high_confidence\phobos\f30035bd2f3bd2c03eb6f1c9bac2a4ce3a51da23e37e9faacabeb9dce0605429.ex","\??\D:\new\ransomware_high_confidence\phobos\f30035bd2f3bd2c03eb6f1c9bac2a4ce3a51da23e37e9faacabeb9dce0605429.exe"
+2,"Remote Thread Creation",5076,"2025-05-22 18:14:39",0x0,4732,"\Device\HarddiskVolume5\new\ransomware_high_confidence\phobos\f30035bd2f3bd2c03eb6f1c9bac2a4ce3a51da23e37e9faacabeb9dce0605429.ex","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
+3,"Remote Thread Creation",5076,"2025-05-22 18:14:39",0x0,5448,"\Device\HarddiskVolume5\new\ransomware_high_confidence\phobos\f30035bd2f3bd2c03eb6f1c9bac2a4ce3a51da23e37e9faacabeb9dce0605429.ex","\Device\HarddiskVolume3\Windows\System32\cmd.exe"

@@ -1,0 +1,5 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3644,"2025-05-22 18:14:36",0x0,9108,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\3b43751ed88e4d1f82cf52ca2d4477e3e35c35f08c1b4e3ab21c80720601e804.","\Device\HarddiskVolume3\Windows\System32\vssadmin.exe"
+2,"Remote Thread Creation",3644,"2025-05-22 18:14:36",0x0,4408,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\3b43751ed88e4d1f82cf52ca2d4477e3e35c35f08c1b4e3ab21c80720601e804.","\Device\HarddiskVolume3\Windows\System32\bcdedit.exe"
+3,"Remote Thread Creation",3644,"2025-05-22 18:14:36",0x0,9244,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\3b43751ed88e4d1f82cf52ca2d4477e3e35c35f08c1b4e3ab21c80720601e804.","\Device\HarddiskVolume3\Windows\System32\bcdedit.exe"
+4,"Remote Thread Creation",3644,"2025-05-22 18:14:36",0x0,9404,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\3b43751ed88e4d1f82cf52ca2d4477e3e35c35f08c1b4e3ab21c80720601e804.","\Device\HarddiskVolume3\Windows\System32\bcdedit.exe"

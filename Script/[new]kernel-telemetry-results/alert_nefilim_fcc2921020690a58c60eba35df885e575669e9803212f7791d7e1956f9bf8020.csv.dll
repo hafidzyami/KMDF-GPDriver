@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",3668,"2025-05-22 18:14:20",0x0,5420,"\Device\HarddiskVolume5\new\ransomware_high_confidence\nefilim\fcc2921020690a58c60eba35df885e575669e9803212f7791d7e1956f9bf8020.e","\Device\HarddiskVolume3\Windows\SysWOW64\cmd.exe"

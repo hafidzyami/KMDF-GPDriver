@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:41",0x0,9140,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\4e8e84ad831cf251366b609720d6e3c6523fdd66ea0f989acb5d62e62e418cdf.","\Device\HarddiskVolume3\Windows\System32\vssadmin.exe"

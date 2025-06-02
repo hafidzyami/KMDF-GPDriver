@@ -1,0 +1,4 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:41",0x0,5192,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\56dc200341cac71492c374d9251791c60308d96d4387a8bbae999fdb5d841375.","\Device\HarddiskVolume3\Users\Public\Videos\hgfdfds.exe"
+2,"Remote Thread Creation",5192,"2025-05-22 18:14:41",0x0,2084,"\Device\HarddiskVolume3\Users\Public\Videos\hgfdfds.exe","\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\svchost.exe"
+3,"Remote Thread Creation",5192,"2025-05-22 18:14:41",0x0,8444,"\Device\HarddiskVolume3\Users\Public\Videos\hgfdfds.exe","\Device\HarddiskVolume3\Program Files\WindowsApps\Microsoft.WindowsNotepad_11.2501.31.0_x64__8wekyb3d8bbwe\Notepad\Notepad.exe"

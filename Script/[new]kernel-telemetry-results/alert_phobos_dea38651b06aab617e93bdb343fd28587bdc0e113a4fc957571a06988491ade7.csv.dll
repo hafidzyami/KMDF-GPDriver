@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:06",0x0,4220,"\Device\HarddiskVolume5\new\ransomware_high_confidence\phobos\dea38651b06aab617e93bdb343fd28587bdc0e113a4fc957571a06988491ade7.ex","\Device\HarddiskVolume5\new\ransomware_high_confidence\phobos\dea38651b06aab617e93bdb343fd28587bdc0e113a4fc957571a06988491ade7.ex"

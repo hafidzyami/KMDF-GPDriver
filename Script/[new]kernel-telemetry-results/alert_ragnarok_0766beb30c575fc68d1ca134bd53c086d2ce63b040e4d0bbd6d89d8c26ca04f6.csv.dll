@@ -1,0 +1,7 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",8432,"2025-05-22 18:15:17",0xb401cf,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\0766beb30c575fc68d1ca134bd53c086d2ce63b040e4d0bbd6d89d8c26ca04f6.","\??\C:\WINDOWS\SYSTEM32\bcdedit.exe"
+2,"Remote Thread Creation",3684,"2025-05-22 18:15:17",0x0,8432,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\0766beb30c575fc68d1ca134bd53c086d2ce63b040e4d0bbd6d89d8c26ca04f6.","\Device\HarddiskVolume3\Windows\System32\bcdedit.exe"
+3,"Stack Violation",8656,"2025-05-22 18:15:17",0xb401cf,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\0766beb30c575fc68d1ca134bd53c086d2ce63b040e4d0bbd6d89d8c26ca04f6.","\??\C:\WINDOWS\SYSTEM32\bcdedit.exe"
+4,"Remote Thread Creation",3684,"2025-05-22 18:15:17",0x0,8656,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\0766beb30c575fc68d1ca134bd53c086d2ce63b040e4d0bbd6d89d8c26ca04f6.","\Device\HarddiskVolume3\Windows\System32\bcdedit.exe"
+5,"Stack Violation",8836,"2025-05-22 18:15:17",0xb401cf,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\0766beb30c575fc68d1ca134bd53c086d2ce63b040e4d0bbd6d89d8c26ca04f6.","\??\C:\WINDOWS\SYSTEM32\bcdedit.exe"
+6,"Remote Thread Creation",3684,"2025-05-22 18:15:17",0x0,8836,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ragnarok\0766beb30c575fc68d1ca134bd53c086d2ce63b040e4d0bbd6d89d8c26ca04f6.","\Device\HarddiskVolume3\Windows\System32\bcdedit.exe"

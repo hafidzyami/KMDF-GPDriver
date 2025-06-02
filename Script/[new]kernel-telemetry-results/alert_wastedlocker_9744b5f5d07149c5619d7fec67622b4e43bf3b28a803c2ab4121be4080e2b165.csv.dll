@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",8148,"2025-05-22 18:14:05",0x0,3644,"\Device\HarddiskVolume5\new\ransomware_high_confidence\wastedlocker\9744b5f5d07149c5619d7fec67622b4e43bf3b28a803c2ab4121be4080e2b","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",5244,"2025-05-22 18:14:06",0x0,5076,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\d956b9643f528c77bb3118ea3ff3a22457f214d154b83d2ea1c001badda68196.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

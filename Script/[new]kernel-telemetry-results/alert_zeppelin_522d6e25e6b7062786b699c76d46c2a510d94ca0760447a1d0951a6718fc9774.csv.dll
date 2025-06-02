@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:15:00",0x0,5868,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\522d6e25e6b7062786b699c76d46c2a510d94ca0760447a1d0951a6718fc9774.","\Device\HarddiskVolume3\Users\wineleven\AppData\Roaming\Microsoft\Windows\services.exe"

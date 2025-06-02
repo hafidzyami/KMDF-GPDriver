@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",5628,"2025-05-22 18:14:06",0x0,2380,"\Device\HarddiskVolume5\new\ransomware_high_confidence\maze\ddf779192b026a7c9e207b4fa65a8cf134cb4a6ed21aa768958a8cb8332fef69.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

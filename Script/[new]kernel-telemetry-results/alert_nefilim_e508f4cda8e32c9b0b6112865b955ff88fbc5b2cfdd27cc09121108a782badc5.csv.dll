@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",2204,"2025-05-22 18:14:06",0x0,3668,"\Device\HarddiskVolume5\new\ransomware_high_confidence\nefilim\e508f4cda8e32c9b0b6112865b955ff88fbc5b2cfdd27cc09121108a782badc5.e","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

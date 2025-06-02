@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",5660,"2025-05-22 18:14:05",0x0,5076,"\Device\HarddiskVolume5\new\ransomware_high_confidence\zeppelin\6ad150150f18b97e95e7f12465f502694e50e870e8f118ca52783124771211cf.","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

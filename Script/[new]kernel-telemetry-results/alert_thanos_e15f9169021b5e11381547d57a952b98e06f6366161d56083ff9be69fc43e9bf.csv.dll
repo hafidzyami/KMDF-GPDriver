@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Parent PID Spoofing",4732,"2025-05-22 18:14:04",0x0,5076,"\Device\HarddiskVolume5\new\ransomware_high_confidence\thanos\e15f9169021b5e11381547d57a952b98e06f6366161d56083ff9be69fc43e9bf.ex","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

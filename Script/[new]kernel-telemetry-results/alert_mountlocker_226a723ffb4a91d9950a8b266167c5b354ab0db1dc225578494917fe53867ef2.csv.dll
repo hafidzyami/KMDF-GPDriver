@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Stack Violation",524,"2025-05-22 18:14:13",0x25a1c13,0,"\Device\HarddiskVolume5\new\ransomware_high_confidence\mountlocker\226a723ffb4a91d9950a8b266167c5b354ab0db1dc225578494917fe53867e","\??\C:\WINDOWS\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+2,"Remote Thread Creation",5076,"2025-05-22 18:14:13",0x0,524,"\Device\HarddiskVolume5\new\ransomware_high_confidence\mountlocker\226a723ffb4a91d9950a8b266167c5b354ab0db1dc225578494917fe53867e","\Device\HarddiskVolume3\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"

@@ -1,0 +1,2 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",5076,"2025-05-22 18:14:06",0x0,5644,"\Device\HarddiskVolume5\new\ransomware_high_confidence\revil\dc6b0e8c1e9c113f0364e1c8370060dee3fcbe25b667ddeca7623a95cd21411f.exe","\Device\HarddiskVolume3\Users\WINELE~1\AppData\Local\Temp\MsMpEng.exe"

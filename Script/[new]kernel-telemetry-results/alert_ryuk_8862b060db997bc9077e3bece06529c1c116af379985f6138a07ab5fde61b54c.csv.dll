@@ -1,0 +1,3 @@
+AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
+1,"Remote Thread Creation",4844,"2025-05-22 18:14:05",0x0,6204,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\8862b060db997bc9077e3bece06529c1c116af379985f6138a07ab5fde61b54c.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\oLSbpaxyglan.exe"
+2,"Remote Thread Creation",4844,"2025-05-22 18:14:05",0x0,3100,"\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\8862b060db997bc9077e3bece06529c1c116af379985f6138a07ab5fde61b54c.exe","\Device\HarddiskVolume5\new\ransomware_high_confidence\ryuk\NusHZMEGalan.exe"
