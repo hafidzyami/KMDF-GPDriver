@@ -1,2 +1,0 @@
-AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
-1,"Remote Thread Creation",8180,"2025-05-22 18:14:42",0x0,9584,"\Device\HarddiskVolume5\new\ransomware_high_confidence\avoslocker\718810b8eeb682fc70df602d952c0c83e028c5a5bfa44c506756980caf2edeb","\Device\HarddiskVolume3\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"

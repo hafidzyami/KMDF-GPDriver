@@ -1,6 +1,0 @@
-AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
-1,"Remote Thread Creation",3608,"2025-05-22 18:14:46",0x0,8128,"\Device\HarddiskVolume5\new\ransomware_high_confidence\avoslocker\452967e7a2a6102a50036faa6f348b57ca5c514992bf8f7e0416d2dd9b1ab13","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
-2,"Remote Thread Creation",3608,"2025-05-22 18:14:46",0x0,2764,"\Device\HarddiskVolume5\new\ransomware_high_confidence\avoslocker\452967e7a2a6102a50036faa6f348b57ca5c514992bf8f7e0416d2dd9b1ab13","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
-3,"Remote Thread Creation",3608,"2025-05-22 18:14:46",0x0,5428,"\Device\HarddiskVolume5\new\ransomware_high_confidence\avoslocker\452967e7a2a6102a50036faa6f348b57ca5c514992bf8f7e0416d2dd9b1ab13","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
-4,"Remote Thread Creation",3608,"2025-05-22 18:14:46",0x0,4200,"\Device\HarddiskVolume5\new\ransomware_high_confidence\avoslocker\452967e7a2a6102a50036faa6f348b57ca5c514992bf8f7e0416d2dd9b1ab13","\Device\HarddiskVolume3\Windows\System32\cmd.exe"
-5,"Remote Thread Creation",3608,"2025-05-22 18:14:46",0x0,5388,"\Device\HarddiskVolume5\new\ransomware_high_confidence\avoslocker\452967e7a2a6102a50036faa6f348b57ca5c514992bf8f7e0416d2dd9b1ab13","\Device\HarddiskVolume3\Windows\System32\cmd.exe"

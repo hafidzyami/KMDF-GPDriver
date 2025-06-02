@@ -1,2 +1,0 @@
-AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
-1,"Parent PID Spoofing",3808,"2025-05-22 18:14:15",0x0,3608,"\Device\HarddiskVolume5\new\ransomware_high_confidence\blackbyte\6f36a4a1364cfb063a0463d9e1287248700ccf1e0d8e280e034b02cf3db3c442","\??\C:\WINDOWS\system32\WerFault.exe"

@@ -1,3 +1,0 @@
-AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
-1,"Remote Thread Creation",7940,"2025-05-22 18:14:18",0x0,4100,"\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\029c5d48e425206e2ae84a63d62bdbc80362702913b38618a423c541c8a0ed40.","\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\029c5d48e425206e2ae84a63d62bdbc80362702913b38618a423c541c8a0ed40."
-2,"Parent PID Spoofing",7120,"2025-05-22 18:14:18",0x0,4100,"\Device\HarddiskVolume5\new\ransomware_high_confidence\darkside\029c5d48e425206e2ae84a63d62bdbc80362702913b38618a423c541c8a0ed40.","\??\C:\WINDOWS\SysWOW64\WerFault.exe"

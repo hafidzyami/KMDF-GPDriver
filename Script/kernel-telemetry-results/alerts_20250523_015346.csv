@@ -1,3 +1,0 @@
-AlertID,AlertType,SourceProcessID,Timestamp,ViolatingAddress,TargetProcessID,SourcePath,TargetPath
-1,"Parent PID Spoofing",1284,"2025-05-22 18:14:19",0x0,6016,"\Device\HarddiskVolume5\new\ransomware_high_confidence\babuk\e0caa666e605f9ee708448cb9af69188d3afc350bbedab0143ab2a44493c33f0.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"
-2,"Parent PID Spoofing",1284,"2025-05-22 18:14:19",0x0,6016,"\Device\HarddiskVolume5\new\ransomware_high_confidence\babuk\e0caa666e605f9ee708448cb9af69188d3afc350bbedab0143ab2a44493c33f0.exe","\??\C:\WINDOWS\SysWOW64\WerFault.exe"
